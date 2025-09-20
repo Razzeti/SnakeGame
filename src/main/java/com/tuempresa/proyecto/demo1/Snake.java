@@ -39,9 +39,18 @@ public class Snake implements java.io.Serializable {
 
     // ... (los getters y setters de siempre) ...
     // GETTERS
-    private static long key(Coordenada c) {
+    public static long key(Coordenada c) {
         return (((long)c.x) << 32) | (c.y & 0xffffffffL);
     }
+
+    public void addOcupada(Coordenada c) {
+        ocupadas.add(key(c));
+    }
+
+    public void removeOcupada(Coordenada c) {
+        ocupadas.remove(key(c));
+    }
+
     public boolean ocupa(Coordenada c) { return ocupadas.contains(key(c)); }
     public LinkedList<Coordenada> getCuerpo() { return cuerpo; }
     public int getPuntaje() { return puntaje; }

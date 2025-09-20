@@ -13,6 +13,10 @@ public class GraphicalView {
     private AtomicReference<Direccion> direccionActual;
 
     public GraphicalView(GameStateSnapshot inicial, AtomicReference<Direccion> direccionActual) {
+        this(inicial, direccionActual, null);
+    }
+
+    public GraphicalView(GameStateSnapshot inicial, AtomicReference<Direccion> direccionActual, GameClient client) {
         this.direccionActual = direccionActual;
         this.gamePanel = new GamePanel(inicial);
 

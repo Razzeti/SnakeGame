@@ -1,6 +1,7 @@
 package com.tuempresa.proyecto.demo1;
 
-public class Coordenada {
+public class Coordenada implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     public int x;
     public int y;
 

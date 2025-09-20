@@ -55,15 +55,15 @@ public class GamePanel extends JPanel {
             // Draw snakes
             for (SnakeSnapshot serpiente : snapshot.snakes) {
                 // body
-                g2d.setColor(Color.GRAY);
+                g2d.setPaint(new java.awt.GradientPaint(0, 0, Color.GREEN, Constants.DEFAULT_TILE_SIZE, Constants.DEFAULT_TILE_SIZE, Color.GREEN.darker()));
                 for (int i = 1; i < serpiente.cuerpo.size(); i++) {
                     Coordenada parteCuerpo = serpiente.cuerpo.get(i);
-                    g2d.fillRect(parteCuerpo.x * Constants.DEFAULT_TILE_SIZE, parteCuerpo.y * Constants.DEFAULT_TILE_SIZE, Constants.DEFAULT_TILE_SIZE, Constants.DEFAULT_TILE_SIZE);
+                    g2d.fillRoundRect(parteCuerpo.x * Constants.DEFAULT_TILE_SIZE, parteCuerpo.y * Constants.DEFAULT_TILE_SIZE, Constants.DEFAULT_TILE_SIZE, Constants.DEFAULT_TILE_SIZE, 10, 10);
                 }
                 // head
-                g2d.setColor(Color.GREEN);
+                g2d.setColor(Color.ORANGE);
                 Coordenada cabeza = serpiente.cuerpo.get(0);
-                g2d.fillRect(cabeza.x * Constants.DEFAULT_TILE_SIZE, cabeza.y * Constants.DEFAULT_TILE_SIZE, Constants.DEFAULT_TILE_SIZE, Constants.DEFAULT_TILE_SIZE);
+                g2d.fillRoundRect(cabeza.x * Constants.DEFAULT_TILE_SIZE, cabeza.y * Constants.DEFAULT_TILE_SIZE, Constants.DEFAULT_TILE_SIZE, Constants.DEFAULT_TILE_SIZE, 20, 20);
             }
         }
 
