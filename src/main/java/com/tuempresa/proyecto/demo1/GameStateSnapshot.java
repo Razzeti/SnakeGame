@@ -1,0 +1,16 @@
+package com.tuempresa.proyecto.demo1;
+
+public class GameStateSnapshot implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
+    public final int width, height;
+    public final java.util.List<SnakeSnapshot> snakes;
+    public final java.util.List<FrutaSnapshot> frutas;
+    public final boolean juegoActivo;
+    public GameStateSnapshot(int width, int height, java.util.List<SnakeSnapshot> snakes, java.util.List<FrutaSnapshot> frutas, boolean juegoActivo) {
+        this.width = width;
+        this.height = height;
+        this.snakes = java.util.Collections.unmodifiableList(new java.util.ArrayList<>(snakes));
+        this.frutas = java.util.Collections.unmodifiableList(new java.util.ArrayList<>(frutas));
+        this.juegoActivo = juegoActivo;
+    }
+}
