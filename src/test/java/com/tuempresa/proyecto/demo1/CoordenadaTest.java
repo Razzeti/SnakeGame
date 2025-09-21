@@ -32,6 +32,7 @@ class CoordenadaTest {
 
     @Test
     @DisplayName("Una coordenada no debe ser igual a un objeto de otro tipo")
+    @SuppressWarnings("unlikely-arg-type")
     void testEquals_DifferentType_ShouldNotBeEqual() {
         Coordenada c1 = new Coordenada(10, 20);
         String s1 = "No soy una coordenada";

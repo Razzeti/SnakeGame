@@ -1,7 +1,5 @@
 package com.tuempresa.proyecto.demo1;
 
-import java.awt.Color;
-
 public class Fruta implements java.io.Serializable {
     private static final long serialVersionUID = 1L;
 

@@ -7,11 +7,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 public class GameLogic {
-
-    private Random random = new Random();
 
     public void actualizar(GameState estado, ConcurrentHashMap<String, Direccion> accionesDeJugadores) {
         if (!estado.isJuegoActivo()) {
@@ -123,14 +120,6 @@ public class GameLogic {
             }
         }
         return false;
-    }
-
-    private void moverSerpientes(GameState estado, ConcurrentHashMap<String, Direccion> accionesDeJugadores) {
-        // Esta lógica ahora está dentro de actualizar()
-    }
-
-    private void comprobarColisiones(GameState estado) {
-        // Esta lógica ahora está dentro de actualizar() y esColision()
     }
 
     private void actualizarTablero(GameState estado) {

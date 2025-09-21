@@ -154,11 +154,8 @@ public class GameServer {
                 out = new ObjectOutputStream(clientSocket.getOutputStream());
                 ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
 
+                // Se debe crear el jugador y asignarle un ID ANTES de que pueda recibir updates del juego.
                 synchronized (gameState) {
-                    // Mover la adición del stream de salida aquí para evitar deadlocks.
-                    // Un cliente no se añade a la lista de broadcast hasta que no esté completamente en el juego.
-                    clientOutputStreams.add(out);
-
                     playerId = "Jugador_" + (gameState.getSerpientes().size() + 1);
                     Coordenada posInicial = (gameState.getSerpientes().size() % 2 == 0)
                             ? GameConfig.POSICION_INICIAL_JUGADOR_1
@@ -166,10 +163,15 @@ public class GameServer {
                     Snake newSnake = new Snake(playerId, posInicial);
                     gameState.getSerpientes().add(newSnake);
                     accionesDeJugadores.put(playerId, Direccion.DERECHA);
-                    out.writeObject(playerId);
-                    out.flush();
                     Logger.info("Jugador " + playerId + " se ha unido al juego en " + posInicial);
                 }
+
+                // Enviar el ID al cliente. Esto lo "desbloquea" para empezar a jugar.
+                out.writeObject(playerId);
+                out.flush();
+
+                // Ahora que el cliente está listo, añadirlo a la lista de broadcast.
+                clientOutputStreams.add(out);
 
                 while (!Thread.currentThread().isInterrupted()) {
                     try {

@@ -9,9 +9,11 @@ import javax.swing.JFrame;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -91,7 +93,7 @@ public class PerformanceMetricsTest {
 
         // --- Simulate Rendering ---
         // We need a graphics context to call paintComponent, a BufferedImage works well
-        GameStateSnapshot emptySnapshot = new GameStateSnapshot(1,1, List.of(), List.of(), true, GamePhase.IN_PROGRESS);
+        GameStateSnapshot emptySnapshot = new GameStateSnapshot(1,1, Collections.emptyList(), Collections.emptyList(), true, GamePhase.IN_PROGRESS);
         GamePanel gamePanel = new GamePanel(emptySnapshot);
         // Simulate the panel having a size, otherwise getWidth/getHeight is 0
         gamePanel.setSize(new java.awt.Dimension(100, 100));
@@ -105,8 +107,8 @@ public class PerformanceMetricsTest {
         }
 
         // --- Verification ---
-        List<String> serverLog = Files.readAllLines(Paths.get(TEST_SERVER_LOG));
-        List<String> clientLog = Files.readAllLines(Paths.get(TEST_CLIENT_LOG));
+        List<String> serverLog = Files.readAllLines(Paths.get(TEST_SERVER_LOG), StandardCharsets.UTF_8);
+        List<String> clientLog = Files.readAllLines(Paths.get(TEST_CLIENT_LOG), StandardCharsets.UTF_8);
 
         // Filter for metric lines only to make assertions more robust
         List<String> serverMetrics = serverLog.stream().filter(s -> s.contains("[METRIC]")).collect(Collectors.toList());
@@ -146,8 +148,8 @@ public class PerformanceMetricsTest {
         Thread.sleep(1000); // Let it run a bit
 
         // --- Verification ---
-        List<String> serverLog = Files.readAllLines(Paths.get(TEST_SERVER_LOG));
-        List<String> clientLog = Files.readAllLines(Paths.get(TEST_CLIENT_LOG));
+        List<String> serverLog = Files.readAllLines(Paths.get(TEST_SERVER_LOG), StandardCharsets.UTF_8);
+        List<String> clientLog = Files.readAllLines(Paths.get(TEST_CLIENT_LOG), StandardCharsets.UTF_8);
 
         long serverMetricCount = serverLog.stream().filter(line -> line.contains("[METRIC]")).count();
         long clientMetricCount = clientLog.stream().filter(line -> line.contains("[METRIC]")).count();
