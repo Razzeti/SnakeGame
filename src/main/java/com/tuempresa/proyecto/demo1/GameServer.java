@@ -129,13 +129,14 @@ public class GameServer {
         public void run() {
             try {
                 out = new ObjectOutputStream(clientSocket.getOutputStream());
-                clientOutputStreams.add(out);
-
                 ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
 
                 synchronized (gameState) {
+                    // Mover la adición del stream de salida aquí para evitar deadlocks.
+                    // Un cliente no se añade a la lista de broadcast hasta que no esté completamente en el juego.
+                    clientOutputStreams.add(out);
+
                     playerId = "Jugador_" + (gameState.getSerpientes().size() + 1);
-                    // La posición inicial depende de si es el jugador 1 o 2
                     Coordenada posInicial = (gameState.getSerpientes().size() % 2 == 0)
                             ? GameConfig.POSICION_INICIAL_JUGADOR_1
                             : GameConfig.POSICION_INICIAL_JUGADOR_2;
@@ -147,8 +148,7 @@ public class GameServer {
                     Logger.info("Jugador " + playerId + " se ha unido al juego en " + posInicial);
                 }
 
-
-                while (true) {
+                while (!Thread.currentThread().isInterrupted()) {
                     try {
                         Direccion dir = (Direccion) in.readObject();
                         accionesDeJugadores.put(playerId, dir);
