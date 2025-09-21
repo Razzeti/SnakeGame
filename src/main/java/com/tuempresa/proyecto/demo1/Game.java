@@ -12,12 +12,7 @@ public class Game {
     public static void main(String[] args) {
         if (args.length > 0) {
             if (args[0].equalsIgnoreCase("server")) {
-                try {
-                    new GameServer().start();
-                } catch (IOException e) {
-                    System.err.println("No se pudo iniciar el servidor: " + e.getMessage());
-                    e.printStackTrace();
-                }
+            new GameServer().start();
             } else if (args[0].equalsIgnoreCase("client")) {
                 try {
                     new GameClient().start();

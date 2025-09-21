@@ -63,4 +63,13 @@ public class Snake implements java.io.Serializable {
     public void setPuntaje(int puntaje) { this.puntaje = puntaje; }
     public void setIdJugador(String idJugador) { this.idJugador = idJugador; }
     public void setSegmentosPorCrecer(int segmentos) { this.segmentosPorCrecer = segmentos; } // <-- NUEVO SETTER
+
+    public void reset(Coordenada posicionInicial) {
+        this.puntaje = 0;
+        this.cuerpo.clear();
+        this.cuerpo.addFirst(posicionInicial);
+        this.ocupadas.clear();
+        this.ocupadas.add(key(posicionInicial));
+        this.segmentosPorCrecer = 0;
+    }
 }
