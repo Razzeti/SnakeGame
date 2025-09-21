@@ -66,6 +66,18 @@ public class Logger {
         log(LogLevel.WARN, message);
     }
 
+    public static synchronized void warn(String message, Throwable throwable) {
+        log(LogLevel.WARN, message);
+        if (throwable != null) {
+            if (GameConfig.LOG_TO_CONSOLE) {
+                throwable.printStackTrace(System.err);
+            }
+            if (fileWriter != null) {
+                throwable.printStackTrace(fileWriter);
+            }
+        }
+    }
+
     public static void error(String message) {
         log(LogLevel.ERROR, message);
     }

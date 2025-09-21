@@ -32,6 +32,10 @@ public class GamePanel extends JPanel {
 
     @Override
     protected void paintComponent(Graphics g) {
+        long startTime = 0;
+        if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
+            startTime = System.nanoTime();
+        }
 
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
@@ -87,6 +91,12 @@ public class GamePanel extends JPanel {
                 g2d.setFont(GameConfig.FUENTE_GRANDE_TEXTO);
                 g2d.drawString("GAME OVER", getWidth() / 4, getHeight() / 2);
             }
+        }
+
+        if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
+            long endTime = System.nanoTime();
+            long durationMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(endTime - startTime);
+            Logger.info(String.format("[METRIC] Client frame render time: %d ms", durationMs));
         }
     }
 }

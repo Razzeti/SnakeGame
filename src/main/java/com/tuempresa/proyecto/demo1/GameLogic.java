@@ -25,13 +25,13 @@ public class GameLogic {
         for (Snake s : estado.getSerpientes()) {
             Coordenada cabezaActual = s.getHead();
             Direccion dir = accionesDeJugadores.getOrDefault(s.getIdJugador(), Direccion.NINGUNA);
-            Coordenada nuevaCabeza = new Coordenada(cabezaActual.getX(), cabezaActual.getY());
+            Coordenada nuevaCabeza;
 
             switch (dir) {
-                case ARRIBA:    nuevaCabeza.y--; break;
-                case ABAJO:     nuevaCabeza.y++; break;
-                case IZQUIERDA: nuevaCabeza.x--; break;
-                case DERECHA:   nuevaCabeza.x++; break;
+                case ARRIBA:    nuevaCabeza = new Coordenada(cabezaActual.x, cabezaActual.y - 1); break;
+                case ABAJO:     nuevaCabeza = new Coordenada(cabezaActual.x, cabezaActual.y + 1); break;
+                case IZQUIERDA: nuevaCabeza = new Coordenada(cabezaActual.x - 1, cabezaActual.y); break;
+                case DERECHA:   nuevaCabeza = new Coordenada(cabezaActual.x + 1, cabezaActual.y); break;
                 default: continue; // Si no hay dirección, no hay nada que hacer
             }
 
@@ -50,12 +50,12 @@ public class GameLogic {
         for (Snake s : estado.getSerpientes()) {
              Direccion dir = accionesDeJugadores.getOrDefault(s.getIdJugador(), Direccion.NINGUNA);
              Coordenada cabezaActual = s.getHead();
-             Coordenada nuevaCabeza = new Coordenada(cabezaActual.getX(), cabezaActual.getY());
+             Coordenada nuevaCabeza;
              switch (dir) {
-                case ARRIBA:    nuevaCabeza.y--; break;
-                case ABAJO:     nuevaCabeza.y++; break;
-                case IZQUIERDA: nuevaCabeza.x--; break;
-                case DERECHA:   nuevaCabeza.x++; break;
+                case ARRIBA:    nuevaCabeza = new Coordenada(cabezaActual.x, cabezaActual.y - 1); break;
+                case ABAJO:     nuevaCabeza = new Coordenada(cabezaActual.x, cabezaActual.y + 1); break;
+                case IZQUIERDA: nuevaCabeza = new Coordenada(cabezaActual.x - 1, cabezaActual.y); break;
+                case DERECHA:   nuevaCabeza = new Coordenada(cabezaActual.x + 1, cabezaActual.y); break;
                 default: continue;
             }
 
@@ -137,21 +137,21 @@ public class GameLogic {
         byte[][] tablero = estado.getTablero();
         for(int i=0; i<tablero.length; i++) {
             for(int j=0; j<tablero[i].length; j++) {
-                tablero[i][j] = Constants.VACIO;
+                tablero[i][j] = GameConfig.VACIO;
             }
         }
 
         for (Fruta fruta : estado.getFrutas()) {
             Coordenada pos = fruta.getCoordenada();
-            tablero[pos.y][pos.x] = (byte)(Constants.FRUTA_BASE + fruta.getValor() - 1);
+            tablero[pos.y][pos.x] = (byte)(GameConfig.FRUTA_BASE + fruta.getValor() - 1);
         }
 
         for (Snake serpiente : estado.getSerpientes()) {
             Coordenada cabeza = serpiente.getHead();
-            tablero[cabeza.y][cabeza.x] = Constants.SNAKE_HEAD;
+            tablero[cabeza.y][cabeza.x] = GameConfig.SNAKE_HEAD;
             for (int i = 1; i < serpiente.getCuerpo().size(); i++) {
                 Coordenada parteCuerpo = serpiente.getCuerpo().get(i);
-                tablero[parteCuerpo.y][parteCuerpo.x] = Constants.SNAKE_BODY;
+                tablero[parteCuerpo.y][parteCuerpo.x] = GameConfig.SNAKE_BODY;
             }
         }
     }

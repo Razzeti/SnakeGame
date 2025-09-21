@@ -34,6 +34,16 @@ public final class GameConfig {
     public static final String LOG_FILE_ADMIN = "admin.log";
     public static final boolean LOG_TO_CONSOLE = true;
 
+    // Performance Metrics
+    public static final boolean ENABLE_PERFORMANCE_METRICS = true;
+    public static final long SERVER_TICK_WARNING_THRESHOLD_MS = MILIS_POR_TICK;
+
+    // Game Element Codes (from former Constants.java)
+    public static final byte VACIO = 0;
+    public static final byte FRUTA_BASE = 2;
+    public static final byte SNAKE_HEAD = 10;
+    public static final byte SNAKE_BODY = 11;
+
     private GameConfig() {
         // Private constructor to prevent instantiation
     }

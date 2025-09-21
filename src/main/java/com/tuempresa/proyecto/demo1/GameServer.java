@@ -85,32 +85,55 @@ public class GameServer {
     }
 
     private void tick() {
-        // La lógica del juego solo se procesa si el juego está EN PROGRESO.
+        long startTime = 0;
+        if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
+            startTime = System.nanoTime();
+        }
+
         if (gameState.getGamePhase() == GamePhase.IN_PROGRESS) {
             gameLogic.actualizar(gameState, accionesDeJugadores);
-
-            // Si no quedan serpientes, el juego termina.
             if (gameState.getSerpientes().isEmpty()) {
                 Logger.info("Juego terminado. Todas las serpientes eliminadas.");
                 gameState.setGamePhase(GamePhase.GAME_ENDED);
-                gameState.setJuegoActivo(false); // Se mantiene por consistencia, podría eliminarse a futuro.
+                gameState.setJuegoActivo(false);
             }
         }
-        // El estado se transmite siempre, para que los clientes (y admins) vean el estado actual.
         broadcastGameState();
+
+        if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
+            long endTime = System.nanoTime();
+            long durationMs = TimeUnit.NANOSECONDS.toMillis(endTime - startTime);
+            String logMessage = String.format("[METRIC] Server tick duration: %d ms", durationMs);
+            if (durationMs > GameConfig.SERVER_TICK_WARNING_THRESHOLD_MS) {
+                Logger.warn(logMessage + " - EXCEEDED THRESHOLD");
+            } else {
+                Logger.info(logMessage);
+            }
+        }
     }
 
     private void broadcastGameState() {
         GameStateSnapshot snapshot = gameState.snapshot().toSnapshotDto();
+
+        if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
+            try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                 ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+                oos.writeObject(snapshot);
+                Logger.info(String.format("[METRIC] Packet size: %d bytes", baos.size()));
+            } catch (IOException e) {
+                Logger.error("Error calculating packet size", e);
+            }
+        }
+
         synchronized (clientOutputStreams) {
             clientOutputStreams.removeIf(out -> {
                 try {
                     out.writeObject(snapshot);
-                    out.reset(); // Importante para asegurar que se envía el estado actualizado
+                    out.reset();
                     return false;
                 } catch (IOException e) {
                     Logger.warn("Error al enviar estado al cliente. Eliminando cliente.");
-                    return true; // Eliminar este stream si hay un error
+                    return true;
                 }
             });
         }
@@ -150,10 +173,19 @@ public class GameServer {
 
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
-                        Direccion dir = (Direccion) in.readObject();
-                        accionesDeJugadores.put(playerId, dir);
+                        Object receivedObject = in.readObject();
+                        if (receivedObject instanceof Direccion) {
+                            accionesDeJugadores.put(playerId, (Direccion) receivedObject);
+                        } else if (receivedObject instanceof String) {
+                            String command = (String) receivedObject;
+                            if (command.startsWith("PING;")) {
+                                String pongResponse = "PONG;" + command.substring(5);
+                                out.writeObject(pongResponse);
+                                out.flush();
+                            }
+                        }
                     } catch (ClassNotFoundException e) {
-                        Logger.error("Error al leer la dirección del cliente " + playerId, e);
+                        Logger.error("Error al leer objeto del cliente " + playerId, e);
                         break;
                     }
                 }
