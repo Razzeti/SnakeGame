@@ -6,11 +6,14 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class GameClient {
 
-    // Ahora se usan los valores de GameConfig
+    private ScheduledExecutorService pingScheduler;
     private Socket socket;
     private ObjectInputStream in;
     private ObjectOutputStream out;
@@ -25,6 +28,12 @@ public class GameClient {
 
     public GameClient(boolean isTestMode) {
         this.isTestMode = isTestMode;
+    }
+
+    // Constructor for testing with a custom scheduler
+    public GameClient(boolean isTestMode, ScheduledExecutorService pingScheduler) {
+        this.isTestMode = isTestMode;
+        this.pingScheduler = pingScheduler;
     }
 
     public void start() throws IOException {
@@ -57,28 +66,60 @@ public class GameClient {
         inputSenderThread.setDaemon(true);
         inputSenderThread.start();
 
+        // Iniciar el programador de pings si las métricas están habilitadas
+        if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
+            if (pingScheduler == null) { // Only create if not injected for testing
+                pingScheduler = Executors.newSingleThreadScheduledExecutor();
+                pingScheduler.scheduleAtFixedRate(this::sendPing, 0, 5, TimeUnit.SECONDS);
+            }
+        }
 
         // Bucle principal para recibir el estado del juego y actualizar la vista
         try {
             while (true) {
-                GameStateSnapshot snapshot = (GameStateSnapshot) in.readObject();
-                SwingUtilities.invokeLater(() -> {
-                    if (view != null) {
-                        view.actualizarEstado(snapshot);
-                        view.repaint();
+                Object receivedObject = in.readObject();
+                if (receivedObject instanceof GameStateSnapshot) {
+                    GameStateSnapshot snapshot = (GameStateSnapshot) receivedObject;
+                    SwingUtilities.invokeLater(() -> {
+                        if (view != null) {
+                            view.actualizarEstado(snapshot);
+                            view.repaint();
+                        }
+                    });
+                } else if (receivedObject instanceof String) {
+                    String command = (String) receivedObject;
+                    if (command.startsWith("PONG;")) {
+                        long originalTimestamp = Long.parseLong(command.substring(5));
+                        long rtt = System.currentTimeMillis() - originalTimestamp;
+                        Logger.info(String.format("[METRIC] Network Latency (RTT): %d ms", rtt));
                     }
-                });
+                }
             }
         } catch (ClassNotFoundException | IOException e) {
             Logger.warn("Conexión perdida con el servidor.");
             // e.printStackTrace(); // Optional: might be noisy if client just closes
         } finally {
             Logger.info("Cliente desconectado.");
+            if (pingScheduler != null) {
+                pingScheduler.shutdownNow();
+            }
             try {
                 if (socket != null) socket.close();
             } catch (IOException e) {
                 // ignore
             }
+        }
+    }
+
+    public void sendPing() {
+        try {
+            if (out != null) {
+                String pingMessage = "PING;" + System.currentTimeMillis();
+                out.writeObject(pingMessage);
+                out.flush();
+            }
+        } catch (IOException e) {
+            Logger.warn("Failed to send ping to server.", e);
         }
     }
 

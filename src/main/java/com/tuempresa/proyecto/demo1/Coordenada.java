@@ -2,8 +2,8 @@ package com.tuempresa.proyecto.demo1;
 
 public class Coordenada implements java.io.Serializable {
     private static final long serialVersionUID = 1L;
-    public int x;
-    public int y;
+    public final int x;
+    public final int y;
 
     public Coordenada(int x, int y) {
         this.x = x;
@@ -23,15 +23,6 @@ public class Coordenada implements java.io.Serializable {
 
     public int getY() {
         return y;
-    }
-
-    // Setters
-    public void setX(int x) {
-        this.x = x;
-    }
-
-    public void setY(int y) {
-        this.y = y;
     }
 
     // Método extra útil para debugging (opcional pero recomendado)

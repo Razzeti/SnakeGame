@@ -1,0 +1,30 @@
+[2025-09-21 22:27:18.781] [INFO] Logging to file: test_client.log
+[2025-09-21 22:27:18.785] [INFO] Iniciando cliente...
+[2025-09-21 22:27:18.793] [INFO] Nuevo cliente conectado: /127.0.0.1
+[2025-09-21 22:27:18.803] [INFO] Jugador Jugador_1 se ha unido al juego en Coordenada{x=10, y=10}
+[2025-09-21 22:27:18.803] [INFO] Conectado como: Jugador_1
+[2025-09-21 22:27:18.884] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-21 22:27:18.886] [INFO] [METRIC] Server tick duration: 4 ms
+[2025-09-21 22:27:18.930] [INFO] [METRIC] Client frame render time: 0 ms
+[2025-09-21 22:27:19.033] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-21 22:27:19.034] [INFO] [METRIC] Server tick duration: 2 ms
+[2025-09-21 22:27:19.181] [INFO] [METRIC] Client frame render time: 0 ms
+[2025-09-21 22:27:19.183] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-21 22:27:19.184] [INFO] [METRIC] Server tick duration: 2 ms
+[2025-09-21 22:27:19.333] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-21 22:27:19.334] [INFO] [METRIC] Server tick duration: 2 ms
+[2025-09-21 22:27:19.431] [INFO] [METRIC] Client frame render time: 0 ms
+[2025-09-21 22:27:19.483] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-21 22:27:19.484] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-21 22:27:19.633] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-21 22:27:19.634] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-21 22:27:19.682] [INFO] [METRIC] Client frame render time: 0 ms
+[2025-09-21 22:27:19.783] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-21 22:27:19.784] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-21 22:27:19.786] [INFO] [METRIC] Network Latency (RTT): 1 ms
+[2025-09-21 22:27:19.933] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-21 22:27:19.933] [INFO] [METRIC] Client frame render time: 0 ms
+[2025-09-21 22:27:19.934] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-21 22:27:20.083] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-21 22:27:20.084] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-21 22:27:20.186] [INFO] Deteniendo el servidor...
