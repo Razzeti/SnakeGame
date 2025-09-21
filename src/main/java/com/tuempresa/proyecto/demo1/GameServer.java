@@ -37,7 +37,7 @@ public class GameServer {
     }
 
     public void start() {
-        System.out.println("Iniciando servidor...");
+        Logger.info("Iniciando servidor...");
         ScheduledExecutorService gameLoop = Executors.newSingleThreadScheduledExecutor();
         gameLoop.scheduleAtFixedRate(this::tick, 0, TICK_RATE_MS, TimeUnit.MILLISECONDS);
 
@@ -51,29 +51,27 @@ public class GameServer {
 
     private void listenForPlayers() {
         try (ServerSocket serverSocket = new ServerSocket(PLAYER_PORT)) {
-            System.out.println("Servidor escuchando jugadores en el puerto " + PLAYER_PORT);
+            Logger.info("Servidor escuchando jugadores en el puerto " + PLAYER_PORT);
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Nuevo cliente conectado: " + clientSocket.getInetAddress());
+                Logger.info("Nuevo cliente conectado: " + clientSocket.getInetAddress());
                 new Thread(new ClientHandler(clientSocket)).start();
             }
         } catch (IOException e) {
-            System.err.println("No se pudo iniciar el listener de jugadores en el puerto " + PLAYER_PORT + ": " + e.getMessage());
-            e.printStackTrace();
+            Logger.error("No se pudo iniciar el listener de jugadores en el puerto " + PLAYER_PORT, e);
         }
     }
 
     private void listenForAdmins() {
         try (ServerSocket serverSocket = new ServerSocket(ADMIN_PORT)) {
-            System.out.println("Servidor escuchando administradores en el puerto " + ADMIN_PORT);
+            Logger.info("Servidor escuchando administradores en el puerto " + ADMIN_PORT);
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Nuevo administrador conectado: " + clientSocket.getInetAddress());
+                Logger.info("Nuevo administrador conectado: " + clientSocket.getInetAddress());
                 new Thread(new AdminClientHandler(clientSocket)).start();
             }
         } catch (IOException e) {
-            System.err.println("No se pudo iniciar el listener de administradores en el puerto " + ADMIN_PORT + ": " + e.getMessage());
-            e.printStackTrace();
+            Logger.error("No se pudo iniciar el listener de administradores en el puerto " + ADMIN_PORT, e);
         }
     }
 
@@ -84,7 +82,7 @@ public class GameServer {
 
             // Si no quedan serpientes, el juego termina.
             if (gameState.getSerpientes().isEmpty()) {
-                System.out.println("Juego terminado. Todas las serpientes eliminadas.");
+                Logger.info("Juego terminado. Todas las serpientes eliminadas.");
                 gameState.setGamePhase(GamePhase.GAME_ENDED);
                 gameState.setJuegoActivo(false); // Se mantiene por consistencia, podría eliminarse a futuro.
             }
@@ -102,7 +100,7 @@ public class GameServer {
                     out.reset(); // Importante para asegurar que se envía el estado actualizado
                     return false;
                 } catch (IOException e) {
-                    System.err.println("Error al enviar estado al cliente. Eliminando cliente.");
+                    Logger.warn("Error al enviar estado al cliente. Eliminando cliente.");
                     return true; // Eliminar este stream si hay un error
                 }
             });
@@ -133,6 +131,7 @@ public class GameServer {
                     accionesDeJugadores.put(playerId, Direccion.DERECHA);
                     out.writeObject(playerId);
                     out.flush();
+                    Logger.info("Jugador " + playerId + " se ha unido al juego.");
                 }
 
 
@@ -141,12 +140,12 @@ public class GameServer {
                         Direccion dir = (Direccion) in.readObject();
                         accionesDeJugadores.put(playerId, dir);
                     } catch (ClassNotFoundException e) {
-                        System.err.println("Error al leer la dirección del cliente.");
+                        Logger.error("Error al leer la dirección del cliente " + playerId, e);
                         break;
                     }
                 }
             } catch (IOException e) {
-                System.err.println("Conexión perdida con el cliente: " + clientSocket.getInetAddress());
+                Logger.warn("Conexión perdida con el cliente: " + clientSocket.getInetAddress());
             } finally {
                 if (out != null) {
                     clientOutputStreams.remove(out);
@@ -155,6 +154,7 @@ public class GameServer {
                     synchronized (gameState) {
                         gameState.getSerpientes().removeIf(s -> s.getIdJugador().equals(playerId));
                         accionesDeJugadores.remove(playerId);
+                        Logger.info("Jugador " + playerId + " ha sido eliminado del juego.");
                     }
                 }
                 try {
@@ -170,17 +170,20 @@ public class GameServer {
         if (command == null) {
             return "Error: Comando nulo.";
         }
-        System.out.println("Procesando comando de admin: " + command);
+        Logger.debug("Procesando comando de admin: " + command);
         switch (command.toUpperCase()) {
             case "START_GAME":
                 if (gameState.getGamePhase() == GamePhase.IN_PROGRESS) {
+                    Logger.warn("Intento de iniciar un juego que ya está en progreso.");
                     return "Error: El juego ya está en progreso.";
                 }
+                Logger.info("El juego ha sido iniciado por un administrador.");
                 gameState.setGamePhase(GamePhase.IN_PROGRESS);
                 gameState.setJuegoActivo(true);
                 return "Juego iniciado.";
 
             case "RESET_GAME":
+                Logger.info("El juego ha sido reseteado por un administrador.");
                 gameState.setGamePhase(GamePhase.WAITING_FOR_PLAYERS);
                 gameState.setJuegoActivo(false); // Por consistencia
                 gameState.getFrutas().clear();
@@ -206,7 +209,7 @@ public class GameServer {
                 return playerList.toString();
 
             case "SHUTDOWN":
-                System.out.println("Comando de apagado recibido. El servidor se cerrará.");
+                Logger.warn("Comando de apagado recibido. El servidor se cerrará.");
                 // Esta es una forma abrupta. Una implementación más robusta
                 // cerraría los sockets y los hilos de forma ordenada.
                 System.exit(0);
@@ -238,7 +241,7 @@ public class GameServer {
                 }
 
             } catch (IOException e) {
-                System.err.println("Conexión perdida con el cliente de admin: " + clientSocket.getInetAddress());
+                Logger.warn("Conexión perdida con el cliente de admin: " + clientSocket.getInetAddress());
             } finally {
                 try {
                     clientSocket.close();

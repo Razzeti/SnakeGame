@@ -30,14 +30,14 @@ public class GameClient {
     }
 
     public void start() throws IOException {
-        System.out.println("Iniciando cliente...");
+        Logger.info("Iniciando cliente...");
         try {
             socket = new Socket(SERVER_IP, SERVER_PORT);
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
 
             playerId = (String) in.readObject();
-            System.out.println("Conectado como: " + playerId);
+            Logger.info("Conectado como: " + playerId);
             playerIdFuture.complete(playerId);
         } catch (ClassNotFoundException | IOException e) {
             playerIdFuture.completeExceptionally(e);
@@ -72,9 +72,10 @@ public class GameClient {
                 });
             }
         } catch (ClassNotFoundException | IOException e) {
-            System.err.println("Conexión perdida con el servidor.");
+            Logger.warn("Conexión perdida con el servidor.");
             // e.printStackTrace(); // Optional: might be noisy if client just closes
         } finally {
+            Logger.info("Cliente desconectado.");
             try {
                 if (socket != null) socket.close();
             } catch (IOException e) {
@@ -113,7 +114,7 @@ public class GameClient {
         try {
             new GameClient().start();
         } catch (IOException e) {
-            e.printStackTrace();
+            Logger.error("No se pudo conectar al servidor", e);
         }
     }
 
