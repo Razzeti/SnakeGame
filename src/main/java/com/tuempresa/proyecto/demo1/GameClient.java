@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class GameClient {
@@ -19,6 +20,7 @@ public class GameClient {
     private GraphicalView view;
     private AtomicReference<Direccion> direccionActual = new AtomicReference<>(Direccion.DERECHA);
     private boolean isTestMode = false;
+    private CompletableFuture<String> playerIdFuture = new CompletableFuture<>();
 
     public GameClient() {
     }
@@ -29,16 +31,19 @@ public class GameClient {
 
     public void start() throws IOException {
         System.out.println("Iniciando cliente...");
-        socket = new Socket(SERVER_IP, SERVER_PORT);
-        out = new ObjectOutputStream(socket.getOutputStream());
-        in = new ObjectInputStream(socket.getInputStream());
-
         try {
+            socket = new Socket(SERVER_IP, SERVER_PORT);
+            out = new ObjectOutputStream(socket.getOutputStream());
+            in = new ObjectInputStream(socket.getInputStream());
+
             playerId = (String) in.readObject();
             System.out.println("Conectado como: " + playerId);
-        } catch (ClassNotFoundException e) {
+            playerIdFuture.complete(playerId);
+        } catch (ClassNotFoundException | IOException e) {
+            playerIdFuture.completeExceptionally(e);
             throw new IOException("No se pudo leer el ID de jugador del servidor.", e);
         }
+
 
         if (!isTestMode) {
             // Crear la vista en el Event Dispatch Thread (EDT)
@@ -68,9 +73,13 @@ public class GameClient {
             }
         } catch (ClassNotFoundException | IOException e) {
             System.err.println("Conexión perdida con el servidor.");
-            e.printStackTrace();
+            // e.printStackTrace(); // Optional: might be noisy if client just closes
         } finally {
-            socket.close();
+            try {
+                if (socket != null) socket.close();
+            } catch (IOException e) {
+                // ignore
+            }
         }
     }
 
@@ -96,7 +105,8 @@ public class GameClient {
         return new GameStateSnapshot(30, 20,
                 java.util.Collections.emptyList(),
                 java.util.Collections.emptyList(),
-                true);
+                true,
+                GamePhase.WAITING_FOR_PLAYERS); // <-- VALOR INICIAL
     }
 
     public static void main(String[] args) {
@@ -113,5 +123,9 @@ public class GameClient {
 
     public boolean isConnected() {
         return socket != null && socket.isConnected();
+    }
+
+    public CompletableFuture<String> getPlayerIdFuture() {
+        return playerIdFuture;
     }
 }
