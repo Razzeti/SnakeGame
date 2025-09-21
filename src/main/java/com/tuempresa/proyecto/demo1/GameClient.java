@@ -1,6 +1,7 @@
 package com.tuempresa.proyecto.demo1;
 
 import javax.swing.SwingUtilities;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -58,13 +59,22 @@ public class GameClient {
         // Bucle principal para recibir el estado del juego y actualizar la vista
         try {
             while (true) {
-                GameStateSnapshot snapshot = (GameStateSnapshot) in.readObject();
-                SwingUtilities.invokeLater(() -> {
-                    if (view != null) {
-                        view.actualizarEstado(snapshot);
-                        view.repaint();
+                Object obj = in.readObject();
+                if (obj instanceof byte[]) {
+                    GameStateSnapshot snapshot = deserialize((byte[]) obj);
+                    if (snapshot != null) {
+                        SwingUtilities.invokeLater(() -> {
+                            if (view != null) {
+                                view.actualizarEstado(snapshot);
+                                view.repaint();
+                            }
+                        });
                     }
-                });
+                } else if (obj instanceof Ping) {
+                    // Received a ping request, send it back immediately
+                    out.writeObject(obj);
+                    out.flush();
+                }
             }
         } catch (ClassNotFoundException | IOException e) {
             System.err.println("Conexión perdida con el servidor.");
@@ -97,6 +107,16 @@ public class GameClient {
                 java.util.Collections.emptyList(),
                 java.util.Collections.emptyList(),
                 true);
+    }
+
+    private GameStateSnapshot deserialize(byte[] data) {
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(data);
+             ObjectInputStream ois = new ObjectInputStream(bais)) {
+            return (GameStateSnapshot) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Error deserializing game state: " + e.getMessage());
+            return null;
+        }
     }
 
     public static void main(String[] args) {

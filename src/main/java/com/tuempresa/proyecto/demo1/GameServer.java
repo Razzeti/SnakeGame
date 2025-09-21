@@ -1,19 +1,18 @@
 package com.tuempresa.proyecto.demo1;
 
 import com.tuempresa.proyecto.demo1.Logger.LogLevel;
-
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class GameServer {
 
@@ -25,7 +24,10 @@ public class GameServer {
     private GameState gameState;
     private GameLogic gameLogic;
     private ConcurrentHashMap<String, Direccion> accionesDeJugadores;
-    private Set<ObjectOutputStream> clientOutputStreams = Collections.synchronizedSet(new HashSet<>());
+    private final Map<String, ObjectOutputStream> playerStreams = new ConcurrentHashMap<>();
+    private final ClientMetrics clientMetrics = new ClientMetrics();
+    private final ScheduledExecutorService monitoringScheduler = Executors.newScheduledThreadPool(1);
+    private static final AtomicInteger playerCounter = new AtomicInteger(0);
 
     public GameServer() {
         gameState = new GameState(ANCHO_TABLERO, ALTO_TABLERO);
@@ -36,8 +38,10 @@ public class GameServer {
 
     public void start() throws IOException {
         Logger.log(LogLevel.INFO, "Iniciando servidor...");
+        Runtime.getRuntime().addShutdownHook(new Thread(Logger::close));
         ScheduledExecutorService gameLoop = Executors.newSingleThreadScheduledExecutor();
         gameLoop.scheduleAtFixedRate(this::tick, 0, TICK_RATE_MS, TimeUnit.MILLISECONDS);
+        scheduleMonitoringTasks();
 
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             Logger.log(LogLevel.INFO, "Servidor iniciado en el puerto " + PORT);
@@ -45,6 +49,30 @@ public class GameServer {
                 Socket clientSocket = serverSocket.accept();
                 Logger.log(LogLevel.INFO, "Nuevo cliente conectado: " + clientSocket.getInetAddress().getHostAddress());
                 new Thread(new ClientHandler(clientSocket)).start();
+            }
+        }
+    }
+
+    private void scheduleMonitoringTasks() {
+        monitoringScheduler.scheduleAtFixedRate(() -> {
+            for (String playerId : playerStreams.keySet()) {
+                double bandwidth = clientMetrics.getBandwidthKBps(playerId);
+                Logger.log(LogLevel.INFO, String.format("Bandwidth for %s: %.2f KB/s", playerId, bandwidth));
+                clientMetrics.resetBandwidth(playerId);
+                sendPing(playerId);
+            }
+        }, 5, 5, TimeUnit.SECONDS);
+    }
+
+    private void sendPing(String playerId) {
+        ObjectOutputStream out = playerStreams.get(playerId);
+        if (out != null) {
+            try {
+                out.writeObject(new Ping());
+                out.flush();
+                clientMetrics.recordPing(playerId);
+            } catch (IOException e) {
+                Logger.log(LogLevel.WARN, "Error sending ping to " + playerId);
             }
         }
     }
@@ -72,17 +100,12 @@ public class GameServer {
             gameState.getSerpientes().clear();
             gameState.getFrutas().clear();
 
-            // Re-create snakes for all currently connected players
-            synchronized(clientOutputStreams) {
-                // This is a bit of a hack, we should probably have a proper player list
-                int i = 0;
-                for (ObjectOutputStream out : clientOutputStreams) {
-                    String playerId = "Jugador_" + (i + 1);
-                    Snake newSnake = new Snake(playerId, new Coordenada(10 + i*2, 10));
-                    gameState.getSerpientes().add(newSnake);
-                    accionesDeJugadores.put(playerId, Direccion.DERECHA);
-                    i++;
-                }
+            int i = 0;
+            for (String playerId : playerStreams.keySet()) {
+                Snake newSnake = new Snake(playerId, new Coordenada(10 + i * 2, 10));
+                gameState.getSerpientes().add(newSnake);
+                accionesDeJugadores.put(playerId, Direccion.DERECHA);
+                i++;
             }
 
             GameLogic.generarFruta(gameState);
@@ -93,17 +116,34 @@ public class GameServer {
 
     private void broadcastGameState() {
         GameStateSnapshot snapshot = gameState.snapshot().toSnapshotDto();
-        synchronized (clientOutputStreams) {
-            clientOutputStreams.removeIf(out -> {
-                try {
-                    out.writeObject(snapshot);
-                    out.reset(); // Importante para asegurar que se envía el estado actualizado
-                    return false;
-                } catch (IOException e) {
-                    Logger.log(LogLevel.WARN, "Error al enviar estado al cliente. Eliminando cliente.");
-                    return true; // Eliminar este stream si hay un error
-                }
-            });
+        byte[] gameStateBytes = serialize(snapshot);
+        if (gameStateBytes == null) {
+            Logger.log(LogLevel.ERROR, "Failed to serialize game state.");
+            return;
+        }
+
+        for (Map.Entry<String, ObjectOutputStream> entry : playerStreams.entrySet()) {
+            String playerId = entry.getKey();
+            ObjectOutputStream out = entry.getValue();
+            try {
+                out.writeObject(gameStateBytes);
+                out.reset();
+                clientMetrics.recordBytesSent(playerId, gameStateBytes.length);
+            } catch (IOException e) {
+                Logger.log(LogLevel.WARN, "Error al enviar estado al cliente " + playerId + ". Eliminando cliente.");
+                playerStreams.remove(playerId);
+            }
+        }
+    }
+
+    private byte[] serialize(Object object) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(object);
+            return baos.toByteArray();
+        } catch (IOException e) {
+            Logger.log(LogLevel.ERROR, "Error serializing object: " + e.getMessage());
+            return null;
         }
     }
 
@@ -120,12 +160,12 @@ public class GameServer {
         public void run() {
             try {
                 out = new ObjectOutputStream(clientSocket.getOutputStream());
-                clientOutputStreams.add(out);
-
                 ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
 
                 synchronized (gameState) {
-                    playerId = "Jugador_" + (gameState.getSerpientes().size() + 1);
+                    playerId = "Jugador_" + playerCounter.incrementAndGet();
+                    playerStreams.put(playerId, out);
+
                     Snake newSnake = new Snake(playerId, new Coordenada(10, 10));
                     gameState.getSerpientes().add(newSnake);
                     accionesDeJugadores.put(playerId, Direccion.DERECHA);
@@ -133,11 +173,16 @@ public class GameServer {
                     out.flush();
                 }
 
-
                 while (true) {
                     try {
-                        Direccion dir = (Direccion) in.readObject();
-                        accionesDeJugadores.put(playerId, dir);
+                        Object obj = in.readObject();
+                        if (obj instanceof Direccion) {
+                            accionesDeJugadores.put(playerId, (Direccion) obj);
+                        } else if (obj instanceof Ping) {
+                            Ping ping = (Ping) obj;
+                            long latency = clientMetrics.getLatencyMs(playerId, ping.getTimestamp());
+                            Logger.log(LogLevel.INFO, String.format("Ping from %s: %d ms", playerId, latency));
+                        }
                     } catch (ClassNotFoundException e) {
                         Logger.log(LogLevel.ERROR, "Error al leer la dirección del cliente " + playerId + ": " + e.getMessage());
                         break;
@@ -146,10 +191,8 @@ public class GameServer {
             } catch (IOException e) {
                 Logger.log(LogLevel.INFO, "Conexión perdida con el cliente: " + clientSocket.getInetAddress().getHostAddress());
             } finally {
-                if (out != null) {
-                    clientOutputStreams.remove(out);
-                }
                 if (playerId != null) {
+                    playerStreams.remove(playerId);
                     Logger.log(LogLevel.INFO, "Jugador '" + playerId + "' desconectado.");
                     synchronized (gameState) {
                         gameState.getSerpientes().removeIf(s -> s.getIdJugador().equals(playerId));
