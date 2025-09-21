@@ -10,9 +10,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class GameClient {
 
-    private static final String SERVER_IP = "127.0.0.1";
-    private static final int SERVER_PORT = 12345;
-
+    // Ahora se usan los valores de GameConfig
     private Socket socket;
     private ObjectInputStream in;
     private ObjectOutputStream out;
@@ -32,7 +30,7 @@ public class GameClient {
     public void start() throws IOException {
         Logger.info("Iniciando cliente...");
         try {
-            socket = new Socket(SERVER_IP, SERVER_PORT);
+            socket = new Socket(GameConfig.DEFAULT_HOST, GameConfig.DEFAULT_PORT);
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
 
@@ -103,7 +101,7 @@ public class GameClient {
 
     // Método para crear un snapshot inicial vacío
     private GameStateSnapshot createEmptySnapshot() {
-        return new GameStateSnapshot(30, 20,
+        return new GameStateSnapshot(GameConfig.ANCHO_TABLERO, GameConfig.ALTO_TABLERO,
                 java.util.Collections.emptyList(),
                 java.util.Collections.emptyList(),
                 true,

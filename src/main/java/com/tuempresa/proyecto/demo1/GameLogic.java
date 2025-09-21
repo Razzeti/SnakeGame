@@ -21,6 +21,7 @@ public class GameLogic {
         long startTime = System.nanoTime();
         // 1. Determinar los próximos movimientos y comprobar colisiones
         List<Snake> serpientesAeliminar = new ArrayList<>();
+        Set<Coordenada> futurasCabezas = new HashSet<>();
         for (Snake s : estado.getSerpientes()) {
             Coordenada cabezaActual = s.getHead();
             Direccion dir = accionesDeJugadores.getOrDefault(s.getIdJugador(), Direccion.NINGUNA);
@@ -34,7 +35,7 @@ public class GameLogic {
                 default: continue; // Si no hay dirección, no hay nada que hacer
             }
 
-            if (esColision(estado, s, nuevaCabeza)) {
+            if (esColision(estado, s, nuevaCabeza) || !futurasCabezas.add(nuevaCabeza)) {
                 serpientesAeliminar.add(s);
             }
         }
@@ -72,14 +73,17 @@ public class GameLogic {
                     fit.remove();
                     comioFruta = true;
                     Logger.debug(String.format("Jugador %s comió una fruta de valor %d.", s.getIdJugador(), f.getValor()));
+                    break; // Solo se puede comer una fruta por tick
                 }
             }
 
-            if (s.getSegmentosPorCrecer() > 0) {
-                 s.setSegmentosPorCrecer(s.getSegmentosPorCrecer() - 1);
-            } else {
-                Coordenada cola = s.getCuerpo().removeLast();
-                s.removeOcupada(cola);
+            if (!comioFruta) {
+                if (s.getSegmentosPorCrecer() > 0) {
+                    s.setSegmentosPorCrecer(s.getSegmentosPorCrecer() - 1);
+                } else {
+                    Coordenada cola = s.getCuerpo().removeLast();
+                    s.removeOcupada(cola);
+                }
             }
         }
 
