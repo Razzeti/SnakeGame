@@ -12,16 +12,18 @@ public class Game {
     public static void main(String[] args) {
         if (args.length > 0) {
             if (args[0].equalsIgnoreCase("server")) {
-            new GameServer().start();
+                Logger.info("Iniciando en modo servidor...");
+                new GameServer().start();
             } else if (args[0].equalsIgnoreCase("client")) {
+                Logger.info("Iniciando en modo cliente...");
                 try {
                     new GameClient().start();
                 } catch (IOException e) {
-                    System.err.println("No se pudo conectar al servidor: " + e.getMessage());
-                    e.printStackTrace();
+                    Logger.error("No se pudo conectar al servidor: " + e.getMessage(), e);
                 }
             }
         } else {
+            Logger.info("Iniciando en modo un jugador...");
             startSinglePlayerGame();
         }
     }
@@ -61,6 +63,7 @@ public class Game {
                     gameLogic.actualizar(estado, acciones);
                     if (estado.getSerpientes().isEmpty()) {
                         estado.setJuegoActivo(false);
+                        Logger.info("Juego en modo un jugador terminado.");
                     }
                 }
 
@@ -77,6 +80,7 @@ public class Game {
                 @Override
                 public void windowClosing(java.awt.event.WindowEvent e) {
                     scheduler.shutdownNow();
+                    Logger.info("Ventana de juego cerrada, finalizando loop de un jugador.");
                 }
             });
         });

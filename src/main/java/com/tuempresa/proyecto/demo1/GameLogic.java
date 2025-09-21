@@ -1,8 +1,13 @@
 package com.tuempresa.proyecto.demo1;
 
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class GameLogic {
 
@@ -13,23 +18,12 @@ public class GameLogic {
             return;
         }
 
-        moverSerpientes(estado, accionesDeJugadores);
-        comprobarColisiones(estado);
-
-        if (estado.getFrutas().isEmpty()) {
-            generarFruta(estado);
-        }
-
-        actualizarTablero(estado);
-    }
-
-    private void moverSerpientes(GameState estado, ConcurrentHashMap<String, Direccion> accionesDeJugadores) {
-        for (Snake serpiente : estado.getSerpientes()) {
-            Direccion dir = accionesDeJugadores.getOrDefault(serpiente.getIdJugador(), Direccion.NINGUNA);
-
-            if (dir == Direccion.NINGUNA) continue;
-
-            Coordenada cabezaActual = serpiente.getHead();
+        long startTime = System.nanoTime();
+        // 1. Determinar los próximos movimientos y comprobar colisiones
+        List<Snake> serpientesAeliminar = new ArrayList<>();
+        for (Snake s : estado.getSerpientes()) {
+            Coordenada cabezaActual = s.getHead();
+            Direccion dir = accionesDeJugadores.getOrDefault(s.getIdJugador(), Direccion.NINGUNA);
             Coordenada nuevaCabeza = new Coordenada(cabezaActual.getX(), cabezaActual.getY());
 
             switch (dir) {
@@ -37,68 +31,102 @@ public class GameLogic {
                 case ABAJO:     nuevaCabeza.y++; break;
                 case IZQUIERDA: nuevaCabeza.x--; break;
                 case DERECHA:   nuevaCabeza.x++; break;
-                default: break;
+                default: continue; // Si no hay dirección, no hay nada que hacer
             }
 
-            serpiente.getCuerpo().addFirst(nuevaCabeza);
-            serpiente.addOcupada(nuevaCabeza);
-
-            if (serpiente.getSegmentosPorCrecer() > 0) {
-                serpiente.setSegmentosPorCrecer(serpiente.getSegmentosPorCrecer() - 1);
-            } else {
-                Coordenada cola = serpiente.getCuerpo().removeLast();
-                serpiente.removeOcupada(cola);
+            if (esColision(estado, s, nuevaCabeza)) {
+                serpientesAeliminar.add(s);
             }
         }
-    }
 
-    private void comprobarColisiones(GameState estado) {
-        int alto = estado.getTablero().length;
-        int ancho = estado.getTablero()[0].length;
+        // Eliminar las serpientes que colisionaron
+        for (Snake s : serpientesAeliminar) {
+            estado.getSerpientes().remove(s);
+            Logger.info(String.format("Jugador %s eliminado.", s.getIdJugador()));
+        }
 
-        java.util.List<Snake> serpientesAeliminar = new java.util.ArrayList<>();
-
-        for (Snake s1 : estado.getSerpientes()) {
-            Coordenada head = s1.getHead();
-
-            // Boundary check
-            if (head.getX() < 0 || head.getX() >= ancho || head.getY() < 0 || head.getY() >= alto) {
-                serpientesAeliminar.add(s1);
-                continue;
+        // 2. Mover las serpientes que sobrevivieron
+        for (Snake s : estado.getSerpientes()) {
+             Direccion dir = accionesDeJugadores.getOrDefault(s.getIdJugador(), Direccion.NINGUNA);
+             Coordenada cabezaActual = s.getHead();
+             Coordenada nuevaCabeza = new Coordenada(cabezaActual.getX(), cabezaActual.getY());
+             switch (dir) {
+                case ARRIBA:    nuevaCabeza.y--; break;
+                case ABAJO:     nuevaCabeza.y++; break;
+                case IZQUIERDA: nuevaCabeza.x--; break;
+                case DERECHA:   nuevaCabeza.x++; break;
+                default: continue;
             }
 
-            // Check fruit collision
+            s.getCuerpo().addFirst(nuevaCabeza);
+            s.addOcupada(nuevaCabeza);
+
+            // Gestionar crecimiento y colisión con fruta
+            boolean comioFruta = false;
             java.util.Iterator<Fruta> fit = estado.getFrutas().iterator();
             while (fit.hasNext()) {
                 Fruta f = fit.next();
-                if (f.getCoordenada().equals(head)) {
-                    s1.setPuntaje(s1.getPuntaje() + f.getValor());
-                    s1.setSegmentosPorCrecer(s1.getSegmentosPorCrecer() + f.getValor());
+                if (f.getCoordenada().equals(nuevaCabeza)) {
+                    s.setPuntaje(s.getPuntaje() + f.getValor());
+                    s.setSegmentosPorCrecer(s.getSegmentosPorCrecer() + f.getValor());
                     fit.remove();
-                    // No 'break' here, a snake could be on multiple fruits in the same tick (unlikely but possible)
+                    comioFruta = true;
+                    Logger.debug(String.format("Jugador %s comió una fruta de valor %d.", s.getIdJugador(), f.getValor()));
                 }
             }
 
-            // Check for collisions with other snakes and self
-            for (Snake s2 : estado.getSerpientes()) {
-                if (s1 == s2) { // Self-collision check
-                    // Check if head collides with any part of its body except the head
-                    for (int i = 1; i < s1.getCuerpo().size(); i++) {
-                        if (s1.getCuerpo().get(i).equals(head)) {
-                            serpientesAeliminar.add(s1);
-                            break;
-                        }
-                    }
-                } else { // Collision with another snake
-                    if (s2.ocupa(head)) {
-                        serpientesAeliminar.add(s1);
-                        break;
-                    }
-                }
+            if (s.getSegmentosPorCrecer() > 0) {
+                 s.setSegmentosPorCrecer(s.getSegmentosPorCrecer() - 1);
+            } else {
+                Coordenada cola = s.getCuerpo().removeLast();
+                s.removeOcupada(cola);
             }
         }
 
-        estado.getSerpientes().removeAll(serpientesAeliminar);
+        long endTime = System.nanoTime();
+        Logger.debug(String.format("Lógica de juego tomó %.3f ms", (endTime - startTime) / 1_000_000.0));
+
+        // 3. Generar nueva fruta si es necesario
+        if (estado.getFrutas().isEmpty()) {
+            generarFruta(estado);
+        }
+
+        // 4. Actualizar el tablero para la vista
+        actualizarTablero(estado);
+    }
+
+    private boolean esColision(GameState estado, Snake serpiente, Coordenada nuevaCabeza) {
+        int alto = estado.getTablero().length;
+        int ancho = estado.getTablero()[0].length;
+
+        // Colisión con el borde
+        if (nuevaCabeza.getX() < 0 || nuevaCabeza.getX() >= ancho || nuevaCabeza.getY() < 0 || nuevaCabeza.getY() >= alto) {
+            return true;
+        }
+
+        // Colisión consigo misma
+        for (int i = 0; i < serpiente.getCuerpo().size(); i++) {
+            if (nuevaCabeza.equals(serpiente.getCuerpo().get(i))) {
+                return true;
+            }
+        }
+
+        // Colisión con otras serpientes
+        for (Snake otra : estado.getSerpientes()) {
+            if (serpiente == otra) continue;
+            if (otra.ocupa(nuevaCabeza)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void moverSerpientes(GameState estado, ConcurrentHashMap<String, Direccion> accionesDeJugadores) {
+        // Esta lógica ahora está dentro de actualizar()
+    }
+
+    private void comprobarColisiones(GameState estado) {
+        // Esta lógica ahora está dentro de actualizar() y esColision()
     }
 
     private void actualizarTablero(GameState estado) {
@@ -129,27 +157,30 @@ public class GameLogic {
         int ancho = estado.getTablero()[0].length;
         Random random = new Random();
 
-        Coordenada nuevaPosicion;
-        while (true) {
-            int x = random.nextInt(ancho);
-            int y = random.nextInt(alto);
-            boolean esPosicionValida = true;
+        Set<Coordenada> celdasOcupadas = new HashSet<>();
+        for (Snake s : estado.getSerpientes()) {
+            celdasOcupadas.addAll(s.getCuerpo());
+        }
+        for (Fruta f : estado.getFrutas()) {
+            celdasOcupadas.add(f.getCoordenada());
+        }
 
-            for (Snake s : estado.getSerpientes()) {
-                for (Coordenada c : s.getCuerpo()) {
-                    if (c.x == x && c.y == y) {
-                        esPosicionValida = false;
-                        break;
-                    }
+        List<Coordenada> celdasVacias = new ArrayList<>();
+        for (int y = 0; y < alto; y++) {
+            for (int x = 0; x < ancho; x++) {
+                Coordenada c = new Coordenada(x, y);
+                if (!celdasOcupadas.contains(c)) {
+                    celdasVacias.add(c);
                 }
-                if (!esPosicionValida) break;
-            }
-
-            if (esPosicionValida) {
-                nuevaPosicion = new Coordenada(x, y);
-                break;
             }
         }
+
+        if (celdasVacias.isEmpty()) {
+            Logger.warn("No hay espacio para generar una nueva fruta.");
+            return;
+        }
+
+        Coordenada nuevaPosicion = celdasVacias.get(random.nextInt(celdasVacias.size()));
 
         int tipoFruta = random.nextInt(100);
         Fruta nuevaFruta;
@@ -163,5 +194,6 @@ public class GameLogic {
         }
 
         estado.getFrutas().add(nuevaFruta);
+        Logger.debug(String.format("Nueva fruta generada en (%d, %d) con valor %d.", nuevaPosicion.x, nuevaPosicion.y, nuevaFruta.getValor()));
     }
 }
