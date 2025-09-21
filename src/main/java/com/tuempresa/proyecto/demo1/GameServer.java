@@ -18,19 +18,20 @@ import java.util.concurrent.TimeUnit;
 
 public class GameServer {
 
-    private static final int PLAYER_PORT = 12345;
-    private static final int ADMIN_PORT = 12346;
-    private static final int TICK_RATE_MS = 150;
-    private static final int ANCHO_TABLERO = 30;
-    private static final int ALTO_TABLERO = 20;
-
+    // Ahora se usan los valores de GameConfig
     private GameState gameState;
     private GameLogic gameLogic;
     private ConcurrentHashMap<String, Direccion> accionesDeJugadores;
     private Set<ObjectOutputStream> clientOutputStreams = Collections.synchronizedSet(new HashSet<>());
+    private ScheduledExecutorService gameLoop;
+    private ServerSocket playerServerSocket;
+    private ServerSocket adminServerSocket;
+    private Thread playerListenerThread;
+    private Thread adminListenerThread;
+
 
     public GameServer() {
-        gameState = new GameState(ANCHO_TABLERO, ALTO_TABLERO);
+        gameState = new GameState(GameConfig.ANCHO_TABLERO, GameConfig.ALTO_TABLERO);
         gameLogic = new GameLogic();
         accionesDeJugadores = new ConcurrentHashMap<>();
         GameLogic.generarFruta(gameState);
@@ -38,40 +39,48 @@ public class GameServer {
 
     public void start() {
         Logger.info("Iniciando servidor...");
-        ScheduledExecutorService gameLoop = Executors.newSingleThreadScheduledExecutor();
-        gameLoop.scheduleAtFixedRate(this::tick, 0, TICK_RATE_MS, TimeUnit.MILLISECONDS);
+        gameLoop = Executors.newSingleThreadScheduledExecutor();
+        gameLoop.scheduleAtFixedRate(this::tick, 0, GameConfig.MILIS_POR_TICK, TimeUnit.MILLISECONDS);
 
         // Iniciar hilo para escuchar conexiones de administradores
-        Thread adminListenerThread = new Thread(this::listenForAdmins);
+        adminListenerThread = new Thread(this::listenForAdmins);
         adminListenerThread.start();
 
-        // El hilo principal se encarga de escuchar a los jugadores. Esto bloquea.
-        listenForPlayers();
+        // El hilo principal se encarga de escuchar a los jugadores.
+        playerListenerThread = new Thread(this::listenForPlayers);
+        playerListenerThread.start();
     }
 
     private void listenForPlayers() {
-        try (ServerSocket serverSocket = new ServerSocket(PLAYER_PORT)) {
-            Logger.info("Servidor escuchando jugadores en el puerto " + PLAYER_PORT);
-            while (true) {
-                Socket clientSocket = serverSocket.accept();
+        try {
+            playerServerSocket = new ServerSocket(GameConfig.DEFAULT_PORT);
+            Logger.info("Servidor escuchando jugadores en el puerto " + GameConfig.DEFAULT_PORT);
+            while (!Thread.currentThread().isInterrupted()) {
+                Socket clientSocket = playerServerSocket.accept();
                 Logger.info("Nuevo cliente conectado: " + clientSocket.getInetAddress());
                 new Thread(new ClientHandler(clientSocket)).start();
             }
         } catch (IOException e) {
-            Logger.error("No se pudo iniciar el listener de jugadores en el puerto " + PLAYER_PORT, e);
+            if (!Thread.currentThread().isInterrupted()) {
+                Logger.error("No se pudo iniciar el listener de jugadores en el puerto " + GameConfig.DEFAULT_PORT, e);
+            }
         }
     }
 
     private void listenForAdmins() {
-        try (ServerSocket serverSocket = new ServerSocket(ADMIN_PORT)) {
-            Logger.info("Servidor escuchando administradores en el puerto " + ADMIN_PORT);
-            while (true) {
-                Socket clientSocket = serverSocket.accept();
+        int adminPort = GameConfig.DEFAULT_PORT + 1;
+        try {
+            adminServerSocket = new ServerSocket(adminPort);
+            Logger.info("Servidor escuchando administradores en el puerto " + adminPort);
+            while (!Thread.currentThread().isInterrupted()) {
+                Socket clientSocket = adminServerSocket.accept();
                 Logger.info("Nuevo administrador conectado: " + clientSocket.getInetAddress());
                 new Thread(new AdminClientHandler(clientSocket)).start();
             }
         } catch (IOException e) {
-            Logger.error("No se pudo iniciar el listener de administradores en el puerto " + ADMIN_PORT, e);
+            if (!Thread.currentThread().isInterrupted()) {
+                Logger.error("No se pudo iniciar el listener de administradores en el puerto " + adminPort, e);
+            }
         }
     }
 
@@ -126,12 +135,16 @@ public class GameServer {
 
                 synchronized (gameState) {
                     playerId = "Jugador_" + (gameState.getSerpientes().size() + 1);
-                    Snake newSnake = new Snake(playerId, new Coordenada(10, 10));
+                    // La posición inicial depende de si es el jugador 1 o 2
+                    Coordenada posInicial = (gameState.getSerpientes().size() % 2 == 0)
+                            ? GameConfig.POSICION_INICIAL_JUGADOR_1
+                            : GameConfig.POSICION_INICIAL_JUGADOR_2;
+                    Snake newSnake = new Snake(playerId, posInicial);
                     gameState.getSerpientes().add(newSnake);
                     accionesDeJugadores.put(playerId, Direccion.DERECHA);
                     out.writeObject(playerId);
                     out.flush();
-                    Logger.info("Jugador " + playerId + " se ha unido al juego.");
+                    Logger.info("Jugador " + playerId + " se ha unido al juego en " + posInicial);
                 }
 
 
@@ -190,11 +203,14 @@ public class GameServer {
                 GameLogic.generarFruta(gameState);
 
                 // Resetear estado de las serpientes existentes
-                int i = 0;
+                boolean esJugador1 = true;
                 for (Snake snake : gameState.getSerpientes()) {
-                    snake.reset(new Coordenada(10 + i * 2, 10));
+                    Coordenada posInicial = esJugador1
+                            ? GameConfig.POSICION_INICIAL_JUGADOR_1
+                            : GameConfig.POSICION_INICIAL_JUGADOR_2;
+                    snake.reset(posInicial);
                     accionesDeJugadores.put(snake.getIdJugador(), Direccion.DERECHA);
-                    i++;
+                    esJugador1 = !esJugador1;
                 }
                 return "Juego reseteado. Esperando jugadores.";
 
@@ -249,6 +265,29 @@ public class GameServer {
                     // Ignorar
                 }
             }
+        }
+    }
+
+    public void stop() {
+        Logger.info("Deteniendo el servidor...");
+        gameLoop.shutdownNow();
+
+        try {
+            if (playerServerSocket != null && !playerServerSocket.isClosed()) {
+                playerServerSocket.close();
+            }
+            if (adminServerSocket != null && !adminServerSocket.isClosed()) {
+                adminServerSocket.close();
+            }
+        } catch (IOException e) {
+            Logger.error("Error al cerrar los server sockets", e);
+        }
+
+        if (playerListenerThread != null) {
+            playerListenerThread.interrupt();
+        }
+        if (adminListenerThread != null) {
+            adminListenerThread.interrupt();
         }
     }
 

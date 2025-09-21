@@ -12,9 +12,11 @@ public class Game {
     public static void main(String[] args) {
         if (args.length > 0) {
             if (args[0].equalsIgnoreCase("server")) {
+                Logger.setLogFile(GameConfig.LOG_FILE_SERVER);
                 Logger.info("Iniciando en modo servidor...");
                 new GameServer().start();
             } else if (args[0].equalsIgnoreCase("client")) {
+                Logger.setLogFile(GameConfig.LOG_FILE_CLIENT);
                 Logger.info("Iniciando en modo cliente...");
                 try {
                     new GameClient().start();
@@ -30,13 +32,10 @@ public class Game {
 
     private static void startSinglePlayerGame() {
         // --- CONFIGURACIÓN INICIAL ---
-        final int ANCHO_TABLERO = 30;
-        final int ALTO_TABLERO = 20;
-        final int TICK_RATE_MS = 150;
-
+        // Ahora se usan los valores de GameConfig
         // --- INICIALIZACIÓN DE OBJETOS ---
-        GameState estado = new GameState(ANCHO_TABLERO, ALTO_TABLERO);
-        Snake jugador1 = new Snake("JugadorA", new Coordenada(10, 10));
+        GameState estado = new GameState(GameConfig.ANCHO_TABLERO, GameConfig.ALTO_TABLERO);
+        Snake jugador1 = new Snake("JugadorA", GameConfig.POSICION_INICIAL_JUGADOR_1);
         estado.getSerpientes().add(jugador1);
         GameLogic.generarFruta(estado);
 
@@ -74,7 +73,7 @@ public class Game {
                 });
             };
 
-            scheduler.scheduleAtFixedRate(tick, 0, TICK_RATE_MS, TimeUnit.MILLISECONDS);
+            scheduler.scheduleAtFixedRate(tick, 0, GameConfig.MILIS_POR_TICK, TimeUnit.MILLISECONDS);
 
             view.getFrame().addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override

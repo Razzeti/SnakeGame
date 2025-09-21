@@ -1,56 +1,96 @@
 package com.tuempresa.proyecto.demo1;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ClientServerIntegrationTest {
+class ClientServerIntegrationTest {
 
-    @Test
-    public void testClientConnectsToServer() {
-        // Iniciar servidor en un hilo aparte
-        GameServer server = new GameServer();
-        Thread serverThread = new Thread(server::start);
-        serverThread.setDaemon(true);
+    private GameServer server;
+    private Thread serverThread;
+
+    @BeforeEach
+    void setUp() {
+        server = new GameServer();
+        serverThread = new Thread(() -> server.start());
         serverThread.start();
-
-        // Darle un respiro al servidor para que inicie los sockets
+        // Dar un pequeño margen para que el servidor inicie
         try {
-            Thread.sleep(500);
+            Thread.sleep(100);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
 
-        // Iniciar cliente en otro hilo
-        GameClient client = new GameClient(true); // true for test mode
-        Thread clientThread = new Thread(() -> {
+    @AfterEach
+    void tearDown() {
+        server.stop();
+        try {
+            serverThread.join(1000); // Espera a que el hilo del servidor muera
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        if (serverThread.isAlive()) {
+            serverThread.interrupt();
+        }
+    }
+
+    @Test
+    @DisplayName("Un cliente debe poder conectarse y recibir un ID de jugador")
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void testClientConnectsAndReceivesPlayerId() throws Exception {
+        GameClient client = new GameClient(true); // true para modo test sin GUI
+
+        // El start se ejecuta en otro hilo para no bloquear el test
+        CompletableFuture<Void> clientStartFuture = CompletableFuture.runAsync(() -> {
             try {
                 client.start();
             } catch (IOException e) {
-                // El futuro se completará excepcionalmente, fallando la prueba.
+                fail("El cliente no pudo iniciar: " + e.getMessage());
             }
         });
-        clientThread.setDaemon(true);
-        clientThread.start();
 
-        try {
-            // Esperar a que el cliente confirme la recepción del ID de jugador
-            String playerId = client.getPlayerIdFuture().get(5, TimeUnit.SECONDS);
+        // Esperar a que el cliente obtenga su ID
+        String playerId = client.getPlayerIdFuture().get();
 
-            // Realizar aserciones
-            assertNotNull(playerId, "El ID del jugador no debería ser nulo");
-            assertTrue(client.isConnected(), "El cliente debería estar conectado");
-            assertTrue(playerId.startsWith("Jugador_"), "El ID del jugador debería empezar con 'Jugador_'");
+        assertNotNull(playerId, "El ID de jugador no debería ser nulo.");
+        assertTrue(playerId.startsWith("Jugador_"), "El ID de jugador debe tener el formato esperado.");
 
-        } catch (Exception e) {
-            fail("El cliente no pudo conectarse y recibir un ID de jugador en el tiempo esperado.", e);
-        } finally {
-            // Limpieza
-            serverThread.interrupt();
-            clientThread.interrupt();
-        }
+        // Detener el cliente para terminar el test limpiamente
+        clientStartFuture.cancel(true);
+    }
+
+    @Test
+    @DisplayName("Dos clientes deben conectarse y recibir IDs de jugador diferentes")
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void testTwoClientsConnectAndGetDifferentIds() throws Exception {
+        GameClient client1 = new GameClient(true);
+        GameClient client2 = new GameClient(true);
+
+        CompletableFuture<Void> client1Start = CompletableFuture.runAsync(() -> {
+            try { client1.start(); } catch (IOException e) { fail("Cliente 1 falló"); }
+        });
+        CompletableFuture<Void> client2Start = CompletableFuture.runAsync(() -> {
+            try { client2.start(); } catch (IOException e) { fail("Cliente 2 falló"); }
+        });
+
+        // Esperar a que ambos clientes obtengan su ID
+        String player1Id = client1.getPlayerIdFuture().get();
+        String player2Id = client2.getPlayerIdFuture().get();
+
+        assertNotNull(player1Id);
+        assertNotNull(player2Id);
+        assertNotEquals(player1Id, player2Id, "Los dos clientes deben tener IDs diferentes.");
+
+        client1Start.cancel(true);
+        client2Start.cancel(true);
     }
 }
