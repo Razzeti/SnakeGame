@@ -1,5 +1,7 @@
 package com.tuempresa.proyecto.demo1;
 
+import com.tuempresa.proyecto.demo1.Logger.LogLevel;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -33,15 +35,15 @@ public class GameServer {
     }
 
     public void start() throws IOException {
-        System.out.println("Iniciando servidor...");
+        Logger.log(LogLevel.INFO, "Iniciando servidor...");
         ScheduledExecutorService gameLoop = Executors.newSingleThreadScheduledExecutor();
         gameLoop.scheduleAtFixedRate(this::tick, 0, TICK_RATE_MS, TimeUnit.MILLISECONDS);
 
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Servidor iniciado en el puerto " + PORT);
+            Logger.log(LogLevel.INFO, "Servidor iniciado en el puerto " + PORT);
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Nuevo cliente conectado: " + clientSocket.getInetAddress());
+                Logger.log(LogLevel.INFO, "Nuevo cliente conectado: " + clientSocket.getInetAddress().getHostAddress());
                 new Thread(new ClientHandler(clientSocket)).start();
             }
         }
@@ -54,6 +56,7 @@ public class GameServer {
         if (gameState.isJuegoActivo()) {
             gameLogic.actualizar(gameState, accionesDeJugadores);
             if (gameState.getSerpientes().isEmpty() && !restarting) {
+                Logger.log(LogLevel.INFO, "El juego ha terminado. Reiniciando en 5 segundos...");
                 gameState.setJuegoActivo(false);
                 restarting = true;
                 restartScheduler.schedule(this::restartGame, 5, TimeUnit.SECONDS);
@@ -64,7 +67,7 @@ public class GameServer {
 
     private void restartGame() {
         synchronized (gameState) {
-            System.out.println("Reiniciando juego...");
+            Logger.log(LogLevel.INFO, "Reiniciando juego...");
             accionesDeJugadores.clear();
             gameState.getSerpientes().clear();
             gameState.getFrutas().clear();
@@ -97,7 +100,7 @@ public class GameServer {
                     out.reset(); // Importante para asegurar que se envía el estado actualizado
                     return false;
                 } catch (IOException e) {
-                    System.err.println("Error al enviar estado al cliente. Eliminando cliente.");
+                    Logger.log(LogLevel.WARN, "Error al enviar estado al cliente. Eliminando cliente.");
                     return true; // Eliminar este stream si hay un error
                 }
             });
@@ -136,17 +139,18 @@ public class GameServer {
                         Direccion dir = (Direccion) in.readObject();
                         accionesDeJugadores.put(playerId, dir);
                     } catch (ClassNotFoundException e) {
-                        System.err.println("Error al leer la dirección del cliente.");
+                        Logger.log(LogLevel.ERROR, "Error al leer la dirección del cliente " + playerId + ": " + e.getMessage());
                         break;
                     }
                 }
             } catch (IOException e) {
-                System.err.println("Conexión perdida con el cliente: " + clientSocket.getInetAddress());
+                Logger.log(LogLevel.INFO, "Conexión perdida con el cliente: " + clientSocket.getInetAddress().getHostAddress());
             } finally {
                 if (out != null) {
                     clientOutputStreams.remove(out);
                 }
                 if (playerId != null) {
+                    Logger.log(LogLevel.INFO, "Jugador '" + playerId + "' desconectado.");
                     synchronized (gameState) {
                         gameState.getSerpientes().removeIf(s -> s.getIdJugador().equals(playerId));
                         accionesDeJugadores.remove(playerId);
@@ -155,7 +159,7 @@ public class GameServer {
                 try {
                     clientSocket.close();
                 } catch (IOException e) {
-                    // Ignorar
+                    Logger.log(LogLevel.ERROR, "Error al cerrar el socket del cliente: " + e.getMessage());
                 }
             }
         }
@@ -163,9 +167,10 @@ public class GameServer {
 
     public static void main(String[] args) {
         try {
+            Logger.log(LogLevel.INFO, "Iniciando GameServer desde el método main.");
             new GameServer().start();
         } catch (IOException e) {
-            System.err.println("No se pudo iniciar el servidor: " + e.getMessage());
+            Logger.log(LogLevel.ERROR, "No se pudo iniciar el servidor: " + e.getMessage());
             e.printStackTrace();
         }
     }

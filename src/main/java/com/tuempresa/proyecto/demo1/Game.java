@@ -1,5 +1,7 @@
 package com.tuempresa.proyecto.demo1;
 
+import com.tuempresa.proyecto.demo1.Logger.LogLevel;
+
 import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.util.concurrent.Executors;
@@ -15,18 +17,19 @@ public class Game {
                 try {
                     new GameServer().start();
                 } catch (IOException e) {
-                    System.err.println("No se pudo iniciar el servidor: " + e.getMessage());
+                    Logger.log(LogLevel.ERROR, "No se pudo iniciar el servidor: " + e.getMessage());
                     e.printStackTrace();
                 }
             } else if (args[0].equalsIgnoreCase("client")) {
                 try {
                     new GameClient().start();
                 } catch (IOException e) {
-                    System.err.println("No se pudo conectar al servidor: " + e.getMessage());
+                    Logger.log(LogLevel.ERROR, "No se pudo conectar al servidor: " + e.getMessage());
                     e.printStackTrace();
                 }
             }
         } else {
+            Logger.log(LogLevel.INFO, "Iniciando juego en modo un solo jugador.");
             startSinglePlayerGame();
         }
     }
