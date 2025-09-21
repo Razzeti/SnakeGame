@@ -1,13 +1,13 @@
-[2025-09-21 22:27:18.256] [INFO] Logging to file: test_server.log
-[2025-09-21 22:27:18.280] [DEBUG] Nueva fruta generada en (26, 11) con valor 1.
-[2025-09-21 22:27:18.281] [INFO] Iniciando servidor...
-[2025-09-21 22:27:18.288] [INFO] Servidor escuchando administradores en el puerto 12346
-[2025-09-21 22:27:18.290] [INFO] Servidor escuchando jugadores en el puerto 12345
-[2025-09-21 22:27:18.293] [INFO] [METRIC] Packet size: 767 bytes
-[2025-09-21 22:27:18.294] [INFO] [METRIC] Server tick duration: 11 ms
-[2025-09-21 22:27:18.433] [INFO] [METRIC] Packet size: 767 bytes
-[2025-09-21 22:27:18.433] [INFO] [METRIC] Server tick duration: 1 ms
-[2025-09-21 22:27:18.583] [INFO] [METRIC] Packet size: 767 bytes
-[2025-09-21 22:27:18.583] [INFO] [METRIC] Server tick duration: 1 ms
-[2025-09-21 22:27:18.733] [INFO] [METRIC] Packet size: 767 bytes
-[2025-09-21 22:27:18.733] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-21 23:07:07.366] [INFO] Logging to file: test_server.log
+[2025-09-21 23:07:07.463] [DEBUG] Nueva fruta generada en (21, 1) con valor 1.
+[2025-09-21 23:07:07.465] [INFO] Iniciando servidor...
+[2025-09-21 23:07:07.476] [INFO] Servidor escuchando jugadores en el puerto 12345
+[2025-09-21 23:07:07.478] [INFO] Servidor escuchando administradores en el puerto 12346
+[2025-09-21 23:07:07.485] [INFO] [METRIC] Packet size: 767 bytes
+[2025-09-21 23:07:07.485] [INFO] [METRIC] Server tick duration: 18 ms
+[2025-09-21 23:07:07.616] [INFO] [METRIC] Packet size: 767 bytes
+[2025-09-21 23:07:07.617] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-21 23:07:07.766] [INFO] [METRIC] Packet size: 767 bytes
+[2025-09-21 23:07:07.767] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-21 23:07:07.917] [INFO] [METRIC] Packet size: 767 bytes
+[2025-09-21 23:07:07.917] [INFO] [METRIC] Server tick duration: 1 ms
