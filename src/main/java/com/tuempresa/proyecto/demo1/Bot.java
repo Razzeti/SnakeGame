@@ -282,28 +282,46 @@ public class Bot {
     }
 
     private boolean isCollision(Coordenada coord, SnakeSnapshot mySnake, GameStateSnapshot snapshot) {
-        // 1. Comprobar colisión con las paredes
-        if (coord.getX() < 0 || coord.getX() >= GameConfig.ANCHO_TABLERO ||
-            coord.getY() < 0 || coord.getY() >= GameConfig.ALTO_TABLERO) {
+        // 1. Comprobar colisión con las paredes (lógica del servidor)
+        if (coord.getX() < 0 || coord.getX() >= snapshot.width ||
+            coord.getY() < 0 || coord.getY() >= snapshot.height) {
             return true;
         }
 
-        // 2. Comprobar colisión con CUALQUIER serpiente en el tablero
-        for (SnakeSnapshot snake : snapshot.snakes) {
-            // Si la serpiente es la nuestra, no chocamos con la punta de la cola, porque se moverá.
-            if (snake.idJugador.equals(mySnake.idJugador)) {
-                if (snake.cuerpo.size() > 2 && snake.cuerpo.subList(0, snake.cuerpo.size() - 1).contains(coord)) {
-                    return true;
-                }
-            } else {
-                // Para otras serpientes, cualquier parte de su cuerpo es una colisión.
-                if (snake.cuerpo.contains(coord)) {
-                    return true;
-                }
+        // 2. Comprobar colisión con todas las serpientes (lógica del servidor)
+        for (SnakeSnapshot otherSnake : snapshot.snakes) {
+            // Comprobar si la coordenada 'coord' está en el cuerpo de 'otherSnake'
+            if (!otherSnake.cuerpo.contains(coord)) {
+                continue; // No hay colisión con esta serpiente, pasar a la siguiente
             }
+
+            // Si la colisión es con nosotros mismos
+            if (otherSnake.idJugador.equals(mySnake.idJugador)) {
+                // La lógica del servidor comprueba todo el cuerpo para evitar giros de 180 grados.
+                // Si 'coord' está en nuestro cuerpo, es una colisión.
+                return true;
+            }
+
+            // Si la colisión es con otra serpiente
+            // Es una colisión, pero necesitamos ver si es con la cola que está a punto de moverse.
+            Coordenada tail = otherSnake.cuerpo.get(otherSnake.cuerpo.size() - 1);
+
+            // Si la colisión es con la cola Y la serpiente no está creciendo Y no es de un solo segmento,
+            // entonces NO es una colisión real.
+            boolean isTailCollision = coord.equals(tail);
+            boolean isGrowing = otherSnake.segmentosPorCrecer > 0;
+            boolean isMultiSegment = otherSnake.cuerpo.size() > 1;
+
+            if (isTailCollision && !isGrowing && isMultiSegment) {
+                // No es una colisión fatal, la cola se moverá.
+                continue;
+            }
+
+            // Si no es el caso especial de la cola, es una colisión real.
+            return true;
         }
 
-        return false;
+        return false; // No se encontró ninguna colisión
     }
 
     private Direccion getLeftTurn(Direccion current) {
