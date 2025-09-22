@@ -113,22 +113,32 @@ public class GameServer {
     }
 
     private void broadcastGameState() {
-        GameStateSnapshot snapshot = gameState.snapshot().toSnapshotDto();
+        GameStateSnapshot snapshot = gameState.toSnapshotDto();
 
-        if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
-            try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                 ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-                oos.writeObject(snapshot);
-                Logger.info(String.format("[METRIC] Packet size: %d bytes", baos.size()));
-            } catch (IOException e) {
-                Logger.error("Error calculating packet size", e);
-            }
+        // OPTIMIZATION: Serialize the complex snapshot object into a byte array ONCE.
+        byte[] snapshotBytes;
+        try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+             java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(baos)) {
+            oos.writeObject(snapshot);
+            snapshotBytes = baos.toByteArray();
+        } catch (IOException e) {
+            Logger.error("Error serializing game state snapshot", e);
+            return; // Cannot broadcast if serialization fails.
         }
 
+        // OPTIMIZATION: Wrap the byte array in a simple Packet object.
+        Packet packet = new Packet(snapshotBytes);
+
+        if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
+            Logger.info(String.format("[METRIC] Packet size: %d bytes", snapshotBytes.length));
+        }
+
+        // OPTIMIZATION: Now, send the much simpler 'Packet' object to all clients.
+        // The serialization cost of this object is trivial, and the reset() call is cheap.
         synchronized (clientOutputStreams) {
             clientOutputStreams.removeIf(out -> {
                 try {
-                    out.writeObject(snapshot);
+                    out.writeObject(packet);
                     out.reset();
                     return false;
                 } catch (IOException e) {
@@ -151,6 +161,7 @@ public class GameServer {
         @Override
         public void run() {
             try {
+                clientSocket.setTcpNoDelay(true); // OPTIMIZATION: Disable Nagle's Algorithm
                 out = new ObjectOutputStream(clientSocket.getOutputStream());
                 ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
 

@@ -40,6 +40,7 @@ public class GameClient {
         Logger.info("Iniciando cliente...");
         try {
             socket = new Socket(GameConfig.DEFAULT_HOST, GameConfig.DEFAULT_PORT);
+            socket.setTcpNoDelay(true); // OPTIMIZATION: Disable Nagle's Algorithm to reduce latency
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
 
@@ -78,14 +79,21 @@ public class GameClient {
         try {
             while (true) {
                 Object receivedObject = in.readObject();
-                if (receivedObject instanceof GameStateSnapshot) {
-                    GameStateSnapshot snapshot = (GameStateSnapshot) receivedObject;
-                    SwingUtilities.invokeLater(() -> {
-                        if (view != null) {
-                            view.actualizarEstado(snapshot);
-                            view.repaint();
-                        }
-                    });
+                if (receivedObject instanceof Packet) {
+                    byte[] snapshotBytes = ((Packet) receivedObject).data;
+                    try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(snapshotBytes);
+                         java.io.ObjectInputStream ois = new java.io.ObjectInputStream(bais)) {
+
+                        GameStateSnapshot snapshot = (GameStateSnapshot) ois.readObject();
+                        SwingUtilities.invokeLater(() -> {
+                            if (view != null) {
+                                view.actualizarEstado(snapshot);
+                                view.repaint();
+                            }
+                        });
+                    } catch (java.io.IOException | ClassNotFoundException e) {
+                        Logger.warn("Error deserializing game state packet", e);
+                    }
                 } else if (receivedObject instanceof String) {
                     String command = (String) receivedObject;
                     if (command.startsWith("PONG;")) {

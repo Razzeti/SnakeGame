@@ -55,8 +55,9 @@ public class GameState {
         int width = tablero[0].length;
         java.util.List<SnakeSnapshot> snakeDtos = new java.util.ArrayList<>();
         for (Snake s : this.serpientes) {
-            java.util.List<Coordenada> body = new java.util.ArrayList<>();
-            for (Coordenada c : s.getCuerpo()) body.add(new Coordenada(c));
+            // OPTIMIZATION: Reuse immutable Coordenada objects instead of creating new ones.
+            // This avoids creating thousands of objects per tick, reducing GC pressure.
+            java.util.List<Coordenada> body = new java.util.ArrayList<>(s.getCuerpo());
             snakeDtos.add(new SnakeSnapshot(s.getIdJugador(), s.getPuntaje(), body));
         }
 
