@@ -58,7 +58,7 @@ public class GameState {
             // OPTIMIZATION: Reuse immutable Coordenada objects instead of creating new ones.
             // This avoids creating thousands of objects per tick, reducing GC pressure.
             java.util.List<Coordenada> body = new java.util.ArrayList<>(s.getCuerpo());
-            snakeDtos.add(new SnakeSnapshot(s.getIdJugador(), s.getPuntaje(), body));
+            snakeDtos.add(new SnakeSnapshot(s.getIdJugador(), s.getPuntaje(), body, s.getSegmentosPorCrecer()));
         }
 
         java.util.List<FrutaSnapshot> frutaDtos = new java.util.ArrayList<>();
