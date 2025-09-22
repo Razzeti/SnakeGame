@@ -37,13 +37,13 @@ public class Game {
         GameState estado = new GameState(GameConfig.ANCHO_TABLERO, GameConfig.ALTO_TABLERO);
         Snake jugador1 = new Snake("JugadorA", GameConfig.POSICION_INICIAL_JUGADOR_1);
         estado.getSerpientes().add(jugador1);
-        GameLogic.generarFruta(estado);
 
         java.util.concurrent.ConcurrentHashMap<String, Direccion> acciones = new java.util.concurrent.ConcurrentHashMap<>();
 
         AtomicReference<Direccion> direccionActual = new AtomicReference<>(Direccion.DERECHA);
 
         GameLogic gameLogic = new GameLogic();
+        gameLogic.generarFruta(estado);
 
         // --- CREACIÓN DE LA INTERFAZ GRÁFICA ---
         SwingUtilities.invokeLater(() -> {

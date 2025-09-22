@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,13 +17,16 @@ public class GameLogic {
             return;
         }
 
+        // Tomar una instantánea de las acciones para este tick para evitar race conditions.
+        Map<String, Direccion> accionesDeEsteTick = new HashMap<>(accionesDeJugadores);
+
         long startTime = System.nanoTime();
         // 1. Determinar los próximos movimientos y comprobar colisiones
         List<Snake> serpientesAeliminar = new ArrayList<>();
         Set<Coordenada> futurasCabezas = new HashSet<>();
         for (Snake s : estado.getSerpientes()) {
             Coordenada cabezaActual = s.getHead();
-            Direccion dir = accionesDeJugadores.getOrDefault(s.getIdJugador(), Direccion.NINGUNA);
+            Direccion dir = accionesDeEsteTick.getOrDefault(s.getIdJugador(), Direccion.NINGUNA);
             Coordenada nuevaCabeza;
 
             switch (dir) {
@@ -45,7 +50,7 @@ public class GameLogic {
 
         // 2. Mover las serpientes que sobrevivieron
         for (Snake s : estado.getSerpientes()) {
-             Direccion dir = accionesDeJugadores.getOrDefault(s.getIdJugador(), Direccion.NINGUNA);
+             Direccion dir = accionesDeEsteTick.getOrDefault(s.getIdJugador(), Direccion.NINGUNA);
              Coordenada cabezaActual = s.getHead();
              Coordenada nuevaCabeza;
              switch (dir) {
@@ -87,13 +92,29 @@ public class GameLogic {
         long endTime = System.nanoTime();
         Logger.debug(String.format("Lógica de juego tomó %.3f ms", (endTime - startTime) / 1_000_000.0));
 
-        // 3. Generar nueva fruta si es necesario
-        if (estado.getFrutas().isEmpty()) {
-            generarFruta(estado);
-        }
+        // 3. Gestionar aparición de frutas
+        gestionarAparicionDeFrutas(estado);
 
         // 4. Actualizar el tablero para la vista
         actualizarTablero(estado);
+    }
+
+    private void gestionarAparicionDeFrutas(GameState estado) {
+        if (estado.getSerpientes().isEmpty() && !estado.getFrutas().isEmpty()) {
+            estado.getFrutas().clear(); // Limpiar frutas si no hay jugadores
+            return;
+        }
+        if (estado.getSerpientes().isEmpty()) {
+            return; // No generar frutas si no hay jugadores
+        }
+
+        int numJugadores = estado.getSerpientes().size();
+        int divisor = Math.max(1, GameConfig.FRUTAS_POR_JUGADOR_DIVISOR);
+        int numFrutasDeseado = GameConfig.FRUTAS_MINIMAS + (numJugadores / divisor);
+
+        while (estado.getFrutas().size() < numFrutasDeseado) {
+            generarFruta(estado);
+        }
     }
 
     private boolean esColision(GameState estado, Snake serpiente, Coordenada nuevaCabeza) {
@@ -115,7 +136,18 @@ public class GameLogic {
         // Colisión con otras serpientes
         for (Snake otra : estado.getSerpientes()) {
             if (serpiente == otra) continue;
+
             if (otra.ocupa(nuevaCabeza)) {
+                // Es una colisión, pero necesitamos ver si es con la cola que está a punto de moverse.
+                Coordenada colaOtra = otra.getCuerpo().getLast();
+
+                // Si la colisión es con la cola Y la serpiente no está creciendo Y la serpiente no es de un solo segmento
+                // (caso borde donde cabeza=cola), entonces no es una colisión real.
+                if (nuevaCabeza.equals(colaOtra) && otra.getSegmentosPorCrecer() == 0 && otra.getCuerpo().size() > 1) {
+                    // No es una colisión fatal, la cola se moverá.
+                    continue;
+                }
+                // Si no, es una colisión real con el cuerpo o la cabeza.
                 return true;
             }
         }
@@ -145,7 +177,7 @@ public class GameLogic {
         }
     }
 
-    public static void generarFruta(GameState estado) {
+    public void generarFruta(GameState estado) {
         int alto = estado.getTablero().length;
         int ancho = estado.getTablero()[0].length;
         Random random = new Random();
@@ -178,9 +210,9 @@ public class GameLogic {
         int tipoFruta = random.nextInt(100);
         Fruta nuevaFruta;
 
-        if (tipoFruta < 70) {
+        if (tipoFruta < GameConfig.PROBABILIDAD_FRUTA_NORMAL) {
             nuevaFruta = new Fruta(nuevaPosicion, 1, Color.RED.getRGB());
-        } else if (tipoFruta < 90) {
+        } else if (tipoFruta < GameConfig.PROBABILIDAD_FRUTA_NORMAL + GameConfig.PROBABILIDAD_FRUTA_BUENA) {
             nuevaFruta = new Fruta(nuevaPosicion, 2, Color.BLUE.getRGB());
         } else {
             nuevaFruta = new Fruta(nuevaPosicion, 3, Color.MAGENTA.getRGB());

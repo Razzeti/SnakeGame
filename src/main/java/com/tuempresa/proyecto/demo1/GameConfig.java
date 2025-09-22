@@ -44,6 +44,13 @@ public final class GameConfig {
     public static final byte SNAKE_HEAD = 10;
     public static final byte SNAKE_BODY = 11;
 
+    // Fruit Configuration
+    public static final int FRUTAS_MINIMAS = 1;
+    public static final int FRUTAS_POR_JUGADOR_DIVISOR = 2; // Generar 1 fruta extra por cada 2 jugadores.
+    public static final int PROBABILIDAD_FRUTA_NORMAL = 70; // 70% de probabilidad para la fruta de 1 punto
+    public static final int PROBABILIDAD_FRUTA_BUENA = 20;  // 20% de probabilidad para la fruta de 2 puntos
+    // El 10% restante es para la fruta excelente (3 puntos)
+
     private GameConfig() {
         // Private constructor to prevent instantiation
     }

@@ -34,7 +34,7 @@ public class GameServer {
         gameState = new GameState(GameConfig.ANCHO_TABLERO, GameConfig.ALTO_TABLERO);
         gameLogic = new GameLogic();
         accionesDeJugadores = new ConcurrentHashMap<>();
-        GameLogic.generarFruta(gameState);
+        gameLogic.generarFruta(gameState);
     }
 
     public void start() {
@@ -245,7 +245,7 @@ public class GameServer {
                 gameState.setGamePhase(GamePhase.WAITING_FOR_PLAYERS);
                 gameState.setJuegoActivo(false); // Por consistencia
                 gameState.getFrutas().clear();
-                GameLogic.generarFruta(gameState);
+                gameLogic.generarFruta(gameState);
 
                 // Resetear estado de las serpientes existentes
                 boolean esJugador1 = true;
