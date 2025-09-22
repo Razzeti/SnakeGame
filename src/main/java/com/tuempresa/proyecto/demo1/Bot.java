@@ -126,6 +126,17 @@ public class Bot {
         Direccion currentDirection = direccionActual.get();
         Coordenada head = mySnake.cuerpo.get(0);
 
+        // Con una pequeña probabilidad, intentar un giro aleatorio para un comportamiento menos predecible.
+        if (random.nextInt(100) < 10) { // 10% de probabilidad de un giro "aleatorio"
+            Direccion randomTurn = random.nextBoolean() ? getLeftTurn(currentDirection) : getRightTurn(currentDirection);
+            Coordenada nextCoord = getNextCoordenada(head, randomTurn);
+            if (!isCollision(nextCoord, mySnake, snapshot)) {
+                Logger.info("Bot " + botId + " (" + difficulty + ") haciendo un giro aleatorio a " + randomTurn);
+                direccionActual.set(randomTurn);
+                return;
+            }
+        }
+
         // Estrategia de evasión mejorada: probar la dirección actual, luego la derecha, luego la izquierda.
         Direccion[] possibleDirections = {
             currentDirection,

@@ -8,8 +8,10 @@ import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -28,6 +30,14 @@ public class GameServer {
     private ServerSocket adminServerSocket;
     private Thread playerListenerThread;
     private Thread adminListenerThread;
+    // Lista de posiciones de inicio para los jugadores.
+    private static final List<Coordenada> STARTING_POSITIONS = Arrays.asList(
+            new Coordenada(10, 5),  // Jugador 1
+            new Coordenada(20, 5),  // Jugador 2
+            new Coordenada(10, 15), // Jugador 3
+            new Coordenada(20, 15)  // Jugador 4
+            // Se pueden añadir más posiciones si se espera soportar más jugadores.
+    );
 
 
     public GameServer() {
@@ -167,13 +177,15 @@ public class GameServer {
 
                 // Se debe crear el jugador y asignarle un ID ANTES de que pueda recibir updates del juego.
                 synchronized (gameState) {
-                    playerId = "Jugador_" + (gameState.getSerpientes().size() + 1);
-                    Coordenada posInicial = (gameState.getSerpientes().size() % 2 == 0)
-                            ? GameConfig.POSICION_INICIAL_JUGADOR_1
-                            : GameConfig.POSICION_INICIAL_JUGADOR_2;
+                    int playerIndex = gameState.getSerpientes().size();
+                    playerId = "Jugador_" + (playerIndex + 1);
+
+                    // Asignar una posición de la lista, rotando si hay más jugadores que posiciones.
+                    Coordenada posInicial = STARTING_POSITIONS.get(playerIndex % STARTING_POSITIONS.size());
+
                     Snake newSnake = new Snake(playerId, posInicial);
                     gameState.getSerpientes().add(newSnake);
-                    accionesDeJugadores.put(playerId, Direccion.DERECHA);
+                    accionesDeJugadores.put(playerId, Direccion.DERECHA); // Dirección inicial por defecto
                     Logger.info("Jugador " + playerId + " se ha unido al juego en " + posInicial);
                 }
 
@@ -248,14 +260,13 @@ public class GameServer {
                 gameLogic.generarFruta(gameState);
 
                 // Resetear estado de las serpientes existentes
-                boolean esJugador1 = true;
+                int playerIndex = 0;
                 for (Snake snake : gameState.getSerpientes()) {
-                    Coordenada posInicial = esJugador1
-                            ? GameConfig.POSICION_INICIAL_JUGADOR_1
-                            : GameConfig.POSICION_INICIAL_JUGADOR_2;
+                    // Asignar una posición de la lista, rotando si hay más jugadores que posiciones.
+                    Coordenada posInicial = STARTING_POSITIONS.get(playerIndex % STARTING_POSITIONS.size());
                     snake.reset(posInicial);
                     accionesDeJugadores.put(snake.getIdJugador(), Direccion.DERECHA);
-                    esJugador1 = !esJugador1;
+                    playerIndex++;
                 }
                 return "Juego reseteado. Esperando jugadores.";
 
