@@ -113,7 +113,7 @@ public class GameServer {
     }
 
     private void broadcastGameState() {
-        GameStateSnapshot snapshot = gameState.snapshot().toSnapshotDto();
+        GameStateSnapshot snapshot = gameState.toSnapshotDto();
 
         if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
             try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
