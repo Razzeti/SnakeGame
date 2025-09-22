@@ -1,34 +1,30 @@
-[2025-09-21 23:07:07.965] [INFO] Logging to file: test_client.log
-[2025-09-21 23:07:07.970] [INFO] Iniciando cliente...
-[2025-09-21 23:07:07.980] [INFO] Nuevo cliente conectado: /127.0.0.1
-[2025-09-21 23:07:08.021] [INFO] Jugador Jugador_1 se ha unido al juego en Coordenada{x=10, y=10}
-[2025-09-21 23:07:08.024] [INFO] Conectado como: Jugador_1
-[2025-09-21 23:07:08.068] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:08.069] [INFO] [METRIC] Server tick duration: 3 ms
-[2025-09-21 23:07:08.218] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:08.221] [INFO] [METRIC] Server tick duration: 3 ms
-[2025-09-21 23:07:08.367] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:08.368] [INFO] [METRIC] Server tick duration: 1 ms
-[2025-09-21 23:07:08.369] [INFO] [METRIC] Client frame render time: 0 ms
-[2025-09-21 23:07:08.516] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:08.518] [INFO] [METRIC] Server tick duration: 1 ms
-[2025-09-21 23:07:08.619] [INFO] [METRIC] Client frame render time: 0 ms
-[2025-09-21 23:07:08.668] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:08.670] [INFO] [METRIC] Server tick duration: 4 ms
-[2025-09-21 23:07:08.817] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:08.819] [INFO] [METRIC] Server tick duration: 3 ms
-[2025-09-21 23:07:08.870] [INFO] [METRIC] Client frame render time: 0 ms
-[2025-09-21 23:07:08.966] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:08.968] [INFO] [METRIC] Server tick duration: 1 ms
-[2025-09-21 23:07:08.971] [INFO] [METRIC] Network Latency (RTT): 1 ms
-[2025-09-21 23:07:09.116] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:09.117] [INFO] [METRIC] Server tick duration: 1 ms
-[2025-09-21 23:07:09.121] [INFO] [METRIC] Client frame render time: 0 ms
-[2025-09-21 23:07:09.266] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:09.267] [INFO] [METRIC] Server tick duration: 1 ms
-[2025-09-21 23:07:09.371] [INFO] [METRIC] Client frame render time: 0 ms
-[2025-09-21 23:07:09.416] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:09.417] [INFO] [METRIC] Server tick duration: 1 ms
-[2025-09-21 23:07:09.566] [INFO] [METRIC] Packet size: 941 bytes
-[2025-09-21 23:07:09.568] [INFO] [METRIC] Server tick duration: 1 ms
-[2025-09-21 23:07:09.625] [INFO] Deteniendo el servidor...
+[2025-09-22 01:55:26.334] [INFO] Logging to file: test_client.log
+[2025-09-22 01:55:26.338] [INFO] Iniciando cliente...
+[2025-09-22 01:55:26.346] [INFO] Nuevo cliente conectado: /127.0.0.1
+[2025-09-22 01:55:26.355] [INFO] Jugador Jugador_1 se ha unido al juego en Coordenada{x=10, y=10}
+[2025-09-22 01:55:26.358] [INFO] Conectado como: Jugador_1
+[2025-09-22 01:55:26.439] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-22 01:55:26.469] [INFO] [METRIC] Server tick duration: 32 ms
+[2025-09-22 01:55:26.489] [INFO] [METRIC] Client frame render time: 0 ms
+[2025-09-22 01:55:26.585] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-22 01:55:26.586] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-22 01:55:26.735] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-22 01:55:26.736] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-22 01:55:26.740] [INFO] [METRIC] Client frame render time: 0 ms
+[2025-09-22 01:55:26.886] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-22 01:55:26.886] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-22 01:55:26.991] [INFO] [METRIC] Client frame render time: 0 ms
+[2025-09-22 01:55:27.035] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-22 01:55:27.036] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-22 01:55:27.185] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-22 01:55:27.186] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-22 01:55:27.241] [INFO] [METRIC] Client frame render time: 0 ms
+[2025-09-22 01:55:27.335] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-22 01:55:27.336] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-22 01:55:27.339] [INFO] [METRIC] Network Latency (RTT): 1 ms
+[2025-09-22 01:55:27.486] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-22 01:55:27.486] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-22 01:55:27.492] [INFO] [METRIC] Client frame render time: 0 ms
+[2025-09-22 01:55:27.635] [INFO] [METRIC] Packet size: 941 bytes
+[2025-09-22 01:55:27.636] [INFO] [METRIC] Server tick duration: 1 ms
+[2025-09-22 01:55:27.745] [INFO] Deteniendo el servidor...

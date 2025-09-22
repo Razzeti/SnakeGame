@@ -8,3 +8,10 @@
 [2025-09-21 22:26:40.754] [INFO] Logging to file: application.log
 [2025-09-21 22:27:18.079] [INFO] Logging to file: application.log
 [2025-09-21 23:07:07.174] [INFO] Logging to file: application.log
+[2025-09-22 01:48:25.708] [INFO] Logging to file: application.log
+[2025-09-22 01:48:25.712] [INFO] Iniciando en modo un jugador...
+[2025-09-22 01:48:25.832] [DEBUG] Nueva fruta generada en (13, 7) con valor 1.
+[2025-09-22 01:49:10.660] [INFO] Logging to file: application.log
+[2025-09-22 01:49:10.661] [INFO] Iniciando en modo un jugador...
+[2025-09-22 01:49:10.686] [DEBUG] Nueva fruta generada en (14, 4) con valor 1.
+[2025-09-22 01:55:25.628] [INFO] Logging to file: application.log
