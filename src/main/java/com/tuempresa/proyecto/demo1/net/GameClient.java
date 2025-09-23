@@ -182,4 +182,18 @@ public class GameClient {
     public CompletableFuture<String> getPlayerIdFuture() {
         return playerIdFuture;
     }
+
+    public void setDirection(Direccion direction) {
+        this.direccionActual.set(direction);
+    }
+
+    public void disconnect() {
+        try {
+            if (socket != null && !socket.isClosed()) {
+                socket.close();
+            }
+        } catch (IOException e) {
+            // Ignore
+        }
+    }
 }
