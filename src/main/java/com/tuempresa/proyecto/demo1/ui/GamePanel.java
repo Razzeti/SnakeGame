@@ -75,29 +75,33 @@ public class GamePanel extends JPanel {
             }
         }
 
-        // Dibujar puntajes y estado de juego usando snapshot si está disponible
+        // Dibujar puntajes y estado de juego
         g2d.setColor(GameConfig.COLOR_TEXTO);
         g2d.setFont(GameConfig.FUENTE_TEXTO);
         int yOffset = 20;
+
         if (snapshot != null) {
+            // Dibuja los puntajes de cada serpiente
             for (SnakeSnapshot serpiente : snapshot.snakes) {
                 g2d.drawString(serpiente.idJugador + ": " + serpiente.puntaje, 10, yOffset);
                 yOffset += 20;
             }
-            if (!snapshot.juegoActivo) {
+
+            // Muestra un mensaje dependiendo de la fase del juego
+            String gameStatusMessage = "";
+            if (snapshot.gamePhase == com.tuempresa.proyecto.demo1.model.GamePhase.WAITING_FOR_PLAYERS) {
+                gameStatusMessage = "WAITING FOR PLAYERS...";
+            } else if (snapshot.gamePhase == com.tuempresa.proyecto.demo1.model.GamePhase.GAME_ENDED) {
+                gameStatusMessage = "GAME OVER";
+            }
+
+            if (!gameStatusMessage.isEmpty()) {
                 g2d.setColor(GameConfig.COLOR_TEXTO);
                 g2d.setFont(GameConfig.FUENTE_GRANDE_TEXTO);
-                g2d.drawString("GAME OVER", getWidth() / 4, getHeight() / 2);
-            }
-        } else if (estado != null) {
-            for (Snake serpiente : estado.getSerpientes()) {
-                g2d.drawString(serpiente.getIdJugador() + ": " + serpiente.getPuntaje(), 10, yOffset);
-                yOffset += 20;
-            }
-            if (!estado.isJuegoActivo()) {
-                g2d.setColor(GameConfig.COLOR_TEXTO);
-                g2d.setFont(GameConfig.FUENTE_GRANDE_TEXTO);
-                g2d.drawString("GAME OVER", getWidth() / 4, getHeight() / 2);
+                // Centrar el texto
+                java.awt.FontMetrics fm = g2d.getFontMetrics();
+                int stringWidth = fm.stringWidth(gameStatusMessage);
+                g2d.drawString(gameStatusMessage, (getWidth() - stringWidth) / 2, getHeight() / 2);
             }
         }
 

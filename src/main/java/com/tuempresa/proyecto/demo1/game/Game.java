@@ -6,7 +6,6 @@ import com.tuempresa.proyecto.demo1.model.Snake;
 import com.tuempresa.proyecto.demo1.net.GameClient;
 import com.tuempresa.proyecto.demo1.net.GameServer;
 import com.tuempresa.proyecto.demo1.net.dto.GameStateSnapshot;
-import com.tuempresa.proyecto.demo1.net.model.*;
 import com.tuempresa.proyecto.demo1.ui.GraphicalView;
 import com.tuempresa.proyecto.demo1.util.Logger;
 
