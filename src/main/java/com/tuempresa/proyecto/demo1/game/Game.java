@@ -42,16 +42,15 @@ public class Game {
 
     private static void startSinglePlayerGame() {
         // --- CONFIGURACIÓN INICIAL ---
-        // Ahora se usan los valores de GameConfig
-        // --- INICIALIZACIÓN DE OBJETOS ---
         GameState estado = new GameState(GameConfig.ANCHO_TABLERO, GameConfig.ALTO_TABLERO);
+        // For single player, the game starts immediately.
+        estado.setGamePhase(com.tuempresa.proyecto.demo1.model.GamePhase.IN_PROGRESS);
+
         Snake jugador1 = new Snake("JugadorA", GameConfig.POSICION_INICIAL_JUGADOR_1);
         estado.getSerpientes().add(jugador1);
 
         java.util.concurrent.ConcurrentHashMap<String, Direccion> acciones = new java.util.concurrent.ConcurrentHashMap<>();
-
         AtomicReference<Direccion> direccionActual = new AtomicReference<>(Direccion.DERECHA);
-
         GameLogic gameLogic = new GameLogic();
         gameLogic.generarFruta(estado);
 
@@ -67,11 +66,11 @@ public class Game {
             });
 
             Runnable tick = () -> {
-                if (estado.isJuegoActivo()) {
+                if (estado.getGamePhase() == com.tuempresa.proyecto.demo1.model.GamePhase.IN_PROGRESS) {
                     acciones.put("JugadorA", direccionActual.get());
                     gameLogic.actualizar(estado, acciones);
                     if (estado.getSerpientes().isEmpty()) {
-                        estado.setJuegoActivo(false);
+                        estado.setGamePhase(com.tuempresa.proyecto.demo1.model.GamePhase.GAME_ENDED);
                         Logger.info("Juego en modo un jugador terminado.");
                     }
                 }

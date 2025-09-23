@@ -7,14 +7,12 @@ public class GameStateSnapshot implements java.io.Serializable {
     public final int width, height;
     public final java.util.List<SnakeSnapshot> snakes;
     public final java.util.List<FrutaSnapshot> frutas;
-    public final boolean juegoActivo;
-    public final GamePhase gamePhase; // <-- NUEVO
-    public GameStateSnapshot(int width, int height, java.util.List<SnakeSnapshot> snakes, java.util.List<FrutaSnapshot> frutas, boolean juegoActivo, GamePhase gamePhase) {
+    public final GamePhase gamePhase;
+    public GameStateSnapshot(int width, int height, java.util.List<SnakeSnapshot> snakes, java.util.List<FrutaSnapshot> frutas, GamePhase gamePhase) {
         this.width = width;
         this.height = height;
         this.snakes = java.util.Collections.unmodifiableList(new java.util.ArrayList<>(snakes));
         this.frutas = java.util.Collections.unmodifiableList(new java.util.ArrayList<>(frutas));
-        this.juegoActivo = juegoActivo;
-        this.gamePhase = gamePhase; // <-- NUEVO
+        this.gamePhase = gamePhase;
     }
 }

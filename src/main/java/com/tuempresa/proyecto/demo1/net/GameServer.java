@@ -121,7 +121,6 @@ public class GameServer {
             if (gameState.getSerpientes().isEmpty()) {
                 Logger.info("Juego terminado. Todas las serpientes eliminadas.");
                 gameState.setGamePhase(GamePhase.GAME_ENDED);
-                gameState.setJuegoActivo(false);
             }
         }
         broadcastGameState();
@@ -176,21 +175,11 @@ public class GameServer {
             });
         }
 
-        // Broadcast to admins
-        synchronized (adminClientHandlers) {
-            adminClientHandlers.removeIf(handler -> {
-                try {
-                    handler.sendGameState(snapshot);
-                    return false;
-                } catch (Exception e) {
-                    Logger.warn("Error sending game state to admin, removing handler.", e);
-                    return true;
-                }
-            });
-        }
+        // Broadcast to admins - Using a copy to prevent ConcurrentModificationException
+        new HashSet<>(adminClientHandlers).forEach(handler -> handler.sendGameState(snapshot));
     }
 
-    private void broadcastAdminData() {
+    private com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot createAdminDataSnapshot() {
         java.util.List<com.tuempresa.proyecto.demo1.net.dto.PlayerData> playerDataList = new java.util.ArrayList<>();
         long now = System.currentTimeMillis();
 
@@ -202,7 +191,6 @@ public class GameServer {
                 playerScores.put(snake.getIdJugador(), snake.getPuntaje());
             }
         }
-
 
         for (com.tuempresa.proyecto.demo1.net.model.ClientMetrics metrics : clientMetrics.values()) {
             long duration = (now - metrics.getConnectionTimestamp()) / 1000;
@@ -225,19 +213,13 @@ public class GameServer {
             ));
         }
 
-        com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot adminSnapshot = new com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot(playerDataList);
+        return new com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot(playerDataList);
+    }
 
-        synchronized (adminClientHandlers) {
-            adminClientHandlers.removeIf(handler -> {
-                try {
-                    handler.sendAdminData(adminSnapshot);
-                    return false;
-                } catch (Exception e) {
-                    Logger.warn("Error sending admin data to admin, removing handler.", e);
-                    return true;
-                }
-            });
-        }
+    private void broadcastAdminData() {
+        com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot adminSnapshot = createAdminDataSnapshot();
+        // Using a copy to prevent ConcurrentModificationException
+        new HashSet<>(adminClientHandlers).forEach(handler -> handler.sendAdminData(adminSnapshot));
     }
 
     private class ClientHandler implements Runnable {
@@ -365,13 +347,11 @@ public class GameServer {
                 }
                 Logger.info("El juego ha sido iniciado por un administrador.");
                 gameState.setGamePhase(GamePhase.IN_PROGRESS);
-                gameState.setJuegoActivo(true);
                 return "Juego iniciado.";
 
             case "RESET_GAME":
                 Logger.info("El juego ha sido reseteado por un administrador.");
                 gameState.setGamePhase(GamePhase.WAITING_FOR_PLAYERS);
-                gameState.setJuegoActivo(false); // Por consistencia
                 gameState.getFrutas().clear();
                 gameLogic.generarFruta(gameState);
 
@@ -411,7 +391,7 @@ public class GameServer {
     }
 
     private class AdminClientHandler implements Runnable {
-        private Socket clientSocket;
+        private final Socket clientSocket;
         private ObjectOutputStream out;
 
         public AdminClientHandler(Socket socket) {
@@ -422,47 +402,67 @@ public class GameServer {
         public void run() {
             try {
                 out = new ObjectOutputStream(clientSocket.getOutputStream());
-                // Add this stream to a new list for admin broadcasts
-                // For simplicity, we can just send the first snapshot directly
-                out.writeObject(gameState.toSnapshotDto());
+                out.flush();
 
-                // Command listening thread
-                new Thread(() -> {
-                    try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
-                        String command;
-                        while ((command = in.readLine()) != null) {
-                            handleAdminCommand(command);
-                        }
-                    } catch (IOException e) {
-                        Logger.warn("Admin client disconnected: " + clientSocket.getInetAddress());
+                ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
+
+                sendGameState(gameState.toSnapshotDto());
+                sendAdminData(createAdminDataSnapshot());
+
+                while (!Thread.currentThread().isInterrupted() && !clientSocket.isClosed()) {
+                    Object commandObject = in.readObject();
+                    if (commandObject instanceof String) {
+                        handleAdminCommand((String) commandObject);
+                    } else {
+                        Logger.warn("Admin client sent an unexpected object type: " + commandObject.getClass().getName());
                     }
-                }).start();
-
-
-            } catch (IOException e) {
-                Logger.warn("Conexión perdida con el cliente de admin: " + clientSocket.getInetAddress());
+                }
+            } catch (IOException | ClassNotFoundException e) {
+                Logger.warn("Connection lost with admin client: " + clientSocket.getInetAddress());
+            } finally {
+                adminClientHandlers.remove(this);
+                try {
+                    if (clientSocket != null && !clientSocket.isClosed()) {
+                        clientSocket.close();
+                    }
+                } catch (IOException e) {
+                    // Ignore
+                }
             }
-            // Note: The handler does not close automatically. It remains open to send data.
-            // It will be closed when the server shuts down or the client disconnects.
         }
 
         public void sendGameState(GameStateSnapshot snapshot) {
+            if (out == null) return;
             try {
                 out.writeObject(snapshot);
                 out.reset();
             } catch (IOException e) {
-                Logger.warn("Failed to send game state to admin, removing.", e);
-                // Here you would remove this handler from a list of admin handlers
+                Logger.warn("Failed to send game state to admin, removing handler and closing socket.", e);
+                closeConnection();
             }
         }
 
         public void sendAdminData(com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot snapshot) {
+            if (out == null) return;
             try {
                 out.writeObject(snapshot);
                 out.reset();
             } catch (IOException e) {
-                Logger.warn("Failed to send admin data to admin, removing.", e);
-                // Here you would remove this handler from a list of admin handlers
+                Logger.warn("Failed to send admin data to admin, removing handler and closing socket.", e);
+                closeConnection();
+            }
+        }
+
+        private void closeConnection() {
+            if (adminClientHandlers.remove(this)) {
+                Logger.info("Removed admin handler for " + clientSocket.getInetAddress());
+            }
+            try {
+                if (!clientSocket.isClosed()) {
+                    clientSocket.close();
+                }
+            } catch (IOException e) {
+                // ignore
             }
         }
     }
