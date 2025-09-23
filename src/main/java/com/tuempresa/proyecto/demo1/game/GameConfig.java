@@ -38,7 +38,7 @@ public final class GameConfig {
     // Performance Metrics
     public static final boolean ENABLE_PERFORMANCE_METRICS = false;
     // Añadido para controlar el log de la lógica del juego
-    public static final boolean ENABLE_LOGIC_TIME_LOGGING = true;
+    public static final boolean ENABLE_LOGIC_TIME_LOGGING = false;
     public static final long SERVER_TICK_WARNING_THRESHOLD_MS = MILIS_POR_TICK;
 
     // Game Element Codes (from former Constants.java)
