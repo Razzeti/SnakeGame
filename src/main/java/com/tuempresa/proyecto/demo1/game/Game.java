@@ -101,13 +101,18 @@ public class Game {
 
             Logger.setLogFile(GameConfig.LOG_FILE_CLIENT);
             Logger.info("Iniciando en modo cliente con ID: " + playerId);
-            try {
-                GameClient client = new GameClient();
-                client.start(host, port, playerId); // Ahora se envía el ID
-            } catch (IOException ex) {
-                Logger.error("No se pudo conectar al servidor: " + ex.getMessage(), ex);
-                JOptionPane.showMessageDialog(null, "Could not connect to the server.", "Connection Error", JOptionPane.ERROR_MESSAGE);
-            }
+
+            new Thread(() -> {
+                try {
+                    GameClient client = new GameClient();
+                    client.start(host, port, playerId); // Ahora se envía el ID
+                } catch (IOException ex) {
+                    Logger.error("No se pudo conectar al servidor: " + ex.getMessage(), ex);
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(null, "Could not connect to the server.", "Connection Error", JOptionPane.ERROR_MESSAGE);
+                    });
+                }
+            }).start();
         }
     }
 
