@@ -40,6 +40,10 @@ public class GameServer {
     private ServerSocket adminServerSocket;
     private Thread playerListenerThread;
     private Thread adminListenerThread;
+    private final Set<AdminClientHandler> adminClientHandlers = Collections.synchronizedSet(new HashSet<>());
+
+
+    private ConcurrentHashMap<String, com.tuempresa.proyecto.demo1.net.model.ClientMetrics> clientMetrics = new ConcurrentHashMap<>();
     // Lista de posiciones de inicio para los jugadores.
     private static final List<Coordenada> STARTING_POSITIONS = Arrays.asList(
             new Coordenada(10, 5),  // Jugador 1
@@ -95,7 +99,9 @@ public class GameServer {
             while (!Thread.currentThread().isInterrupted()) {
                 Socket clientSocket = adminServerSocket.accept();
                 Logger.info("Nuevo administrador conectado: " + clientSocket.getInetAddress());
-                new Thread(new AdminClientHandler(clientSocket)).start();
+                AdminClientHandler handler = new AdminClientHandler(clientSocket);
+                adminClientHandlers.add(handler);
+                new Thread(handler).start();
             }
         } catch (IOException e) {
             if (!Thread.currentThread().isInterrupted()) {
@@ -119,6 +125,7 @@ public class GameServer {
             }
         }
         broadcastGameState();
+        broadcastAdminData();
 
         if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
             long endTime = System.nanoTime();
@@ -135,6 +142,7 @@ public class GameServer {
     private void broadcastGameState() {
         GameStateSnapshot snapshot = gameState.toSnapshotDto();
 
+        // Broadcast to players
         // OPTIMIZATION: Serialize the complex snapshot object into a byte array ONCE.
         byte[] snapshotBytes;
         try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
@@ -167,6 +175,69 @@ public class GameServer {
                 }
             });
         }
+
+        // Broadcast to admins
+        synchronized (adminClientHandlers) {
+            adminClientHandlers.removeIf(handler -> {
+                try {
+                    handler.sendGameState(snapshot);
+                    return false;
+                } catch (Exception e) {
+                    Logger.warn("Error sending game state to admin, removing handler.", e);
+                    return true;
+                }
+            });
+        }
+    }
+
+    private void broadcastAdminData() {
+        java.util.List<com.tuempresa.proyecto.demo1.net.dto.PlayerData> playerDataList = new java.util.ArrayList<>();
+        long now = System.currentTimeMillis();
+
+        // We need to iterate over the snakes to get the score, but metrics are separate.
+        // It's better to build a map of scores first.
+        java.util.Map<String, Integer> playerScores = new java.util.HashMap<>();
+        synchronized (gameState) {
+            for (Snake snake : gameState.getSerpientes()) {
+                playerScores.put(snake.getIdJugador(), snake.getPuntaje());
+            }
+        }
+
+
+        for (com.tuempresa.proyecto.demo1.net.model.ClientMetrics metrics : clientMetrics.values()) {
+            long duration = (now - metrics.getConnectionTimestamp()) / 1000;
+            int score = playerScores.getOrDefault(metrics.getPlayerId(), 0);
+            String status = metrics.getStatus();
+
+            // If the game has ended, the snake might be gone, but the player is still "connected".
+            // We can refine their status here.
+            if (gameState.getGamePhase() == GamePhase.GAME_ENDED && status.equals("Alive")) {
+                status = "Game Over";
+            }
+
+            playerDataList.add(new com.tuempresa.proyecto.demo1.net.dto.PlayerData(
+                    metrics.getPlayerId(),
+                    metrics.getIpAddress().getHostAddress(),
+                    duration,
+                    metrics.getLastPingRttMs(),
+                    status,
+                    score
+            ));
+        }
+
+        com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot adminSnapshot = new com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot(playerDataList);
+
+        synchronized (adminClientHandlers) {
+            adminClientHandlers.removeIf(handler -> {
+                try {
+                    handler.sendAdminData(adminSnapshot);
+                    return false;
+                } catch (Exception e) {
+                    Logger.warn("Error sending admin data to admin, removing handler.", e);
+                    return true;
+                }
+            });
+        }
     }
 
     private class ClientHandler implements Runnable {
@@ -180,6 +251,7 @@ public class GameServer {
 
         @Override
         public void run() {
+            com.tuempresa.proyecto.demo1.net.model.ClientMetrics metrics = null;
             try {
                 clientSocket.setTcpNoDelay(true); // OPTIMIZATION: Disable Nagle's Algorithm
                 out = new ObjectOutputStream(clientSocket.getOutputStream());
@@ -196,6 +268,9 @@ public class GameServer {
                     Snake newSnake = new Snake(playerId, posInicial);
                     gameState.getSerpientes().add(newSnake);
                     accionesDeJugadores.put(playerId, Direccion.DERECHA); // Dirección inicial por defecto
+
+                    metrics = new com.tuempresa.proyecto.demo1.net.model.ClientMetrics(playerId, clientSocket.getInetAddress());
+                    clientMetrics.put(playerId, metrics);
                     Logger.info("Jugador " + playerId + " se ha unido al juego en " + posInicial);
                 }
 
@@ -205,6 +280,8 @@ public class GameServer {
 
                 // Ahora que el cliente está listo, añadirlo a la lista de broadcast.
                 clientOutputStreams.add(out);
+                metrics.setStatus("Alive");
+
 
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
@@ -214,6 +291,11 @@ public class GameServer {
                         } else if (receivedObject instanceof String) {
                             String command = (String) receivedObject;
                             if (command.startsWith("PING;")) {
+                                long pingTimestamp = Long.parseLong(command.substring(5));
+                                long rtt = System.currentTimeMillis() - pingTimestamp;
+                                if (clientMetrics.containsKey(playerId)) {
+                                    clientMetrics.get(playerId).setLastPingRttMs(rtt);
+                                }
                                 String pongResponse = "PONG;" + command.substring(5);
                                 out.writeObject(pongResponse);
                                 out.flush();
@@ -231,6 +313,9 @@ public class GameServer {
                     clientOutputStreams.remove(out);
                 }
                 if (playerId != null) {
+                    if (clientMetrics.containsKey(playerId)) {
+                        clientMetrics.get(playerId).setStatus("Dead");
+                    }
                     synchronized (gameState) {
                         gameState.getSerpientes().removeIf(s -> s.getIdJugador().equals(playerId));
                         accionesDeJugadores.remove(playerId);
@@ -251,7 +336,28 @@ public class GameServer {
             return "Error: Comando nulo.";
         }
         Logger.debug("Procesando comando de admin: " + command);
-        switch (command.toUpperCase()) {
+        String upperCaseCommand = command.toUpperCase();
+
+        if (upperCaseCommand.startsWith("KICK_PLAYER")) {
+            String playerIdToKick = command.substring("KICK_PLAYER".length()).trim();
+            if (clientMetrics.containsKey(playerIdToKick)) {
+                // This is a bit brutal. A cleaner way would be to send a "you have been kicked"
+                // message to the client and have it shut down gracefully.
+                // For now, we just remove them from the game. The ClientHandler will eventually
+                // fail due to a broken pipe and clean up the socket.
+                synchronized (gameState) {
+                    gameState.getSerpientes().removeIf(s -> s.getIdJugador().equals(playerIdToKick));
+                    accionesDeJugadores.remove(playerIdToKick);
+                    clientMetrics.remove(playerIdToKick);
+                }
+                Logger.info("Admin ha expulsado al jugador: " + playerIdToKick);
+                return "Jugador " + playerIdToKick + " ha sido expulsado.";
+            } else {
+                return "Error: No se encontró al jugador " + playerIdToKick;
+            }
+        }
+
+        switch (upperCaseCommand) {
             case "START_GAME":
                 if (gameState.getGamePhase() == GamePhase.IN_PROGRESS) {
                     Logger.warn("Intento de iniciar un juego que ya está en progreso.");
@@ -278,6 +384,10 @@ public class GameServer {
                     accionesDeJugadores.put(snake.getIdJugador(), Direccion.DERECHA);
                     playerIndex++;
                 }
+                // Clear metrics for players that might have disconnected during a game over
+                clientMetrics.entrySet().removeIf(entry ->
+                        gameState.getSerpientes().stream().noneMatch(s -> s.getIdJugador().equals(entry.getKey()))
+                );
                 return "Juego reseteado. Esperando jugadores.";
 
             case "LIST_PLAYERS":
@@ -292,10 +402,8 @@ public class GameServer {
 
             case "SHUTDOWN":
                 Logger.warn("Comando de apagado recibido. El servidor se cerrará.");
-                // Esta es una forma abrupta. Una implementación más robusta
-                // cerraría los sockets y los hilos de forma ordenada.
                 System.exit(0);
-                return "Servidor apagándose..."; // Esto probablemente no se envíe.
+                return "Servidor apagándose...";
 
             default:
                 return "Error: Comando desconocido '" + command + "'.";
@@ -304,6 +412,7 @@ public class GameServer {
 
     private class AdminClientHandler implements Runnable {
         private Socket clientSocket;
+        private ObjectOutputStream out;
 
         public AdminClientHandler(Socket socket) {
             this.clientSocket = socket;
@@ -311,25 +420,49 @@ public class GameServer {
 
         @Override
         public void run() {
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                 PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
+            try {
+                out = new ObjectOutputStream(clientSocket.getOutputStream());
+                // Add this stream to a new list for admin broadcasts
+                // For simplicity, we can just send the first snapshot directly
+                out.writeObject(gameState.toSnapshotDto());
 
-                out.println("Conexión de administración establecida. Bienvenido.");
+                // Command listening thread
+                new Thread(() -> {
+                    try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+                        String command;
+                        while ((command = in.readLine()) != null) {
+                            handleAdminCommand(command);
+                        }
+                    } catch (IOException e) {
+                        Logger.warn("Admin client disconnected: " + clientSocket.getInetAddress());
+                    }
+                }).start();
 
-                String command;
-                while ((command = in.readLine()) != null) {
-                    String response = handleAdminCommand(command);
-                    out.println(response);
-                }
 
             } catch (IOException e) {
                 Logger.warn("Conexión perdida con el cliente de admin: " + clientSocket.getInetAddress());
-            } finally {
-                try {
-                    clientSocket.close();
-                } catch (IOException e) {
-                    // Ignorar
-                }
+            }
+            // Note: The handler does not close automatically. It remains open to send data.
+            // It will be closed when the server shuts down or the client disconnects.
+        }
+
+        public void sendGameState(GameStateSnapshot snapshot) {
+            try {
+                out.writeObject(snapshot);
+                out.reset();
+            } catch (IOException e) {
+                Logger.warn("Failed to send game state to admin, removing.", e);
+                // Here you would remove this handler from a list of admin handlers
+            }
+        }
+
+        public void sendAdminData(com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot snapshot) {
+            try {
+                out.writeObject(snapshot);
+                out.reset();
+            } catch (IOException e) {
+                Logger.warn("Failed to send admin data to admin, removing.", e);
+                // Here you would remove this handler from a list of admin handlers
             }
         }
     }
