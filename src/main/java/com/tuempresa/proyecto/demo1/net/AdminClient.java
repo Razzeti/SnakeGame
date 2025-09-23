@@ -26,7 +26,7 @@ public class AdminClient {
 
     private Socket socket;
     private ObjectInputStream in;
-    private PrintWriter out;
+    private ObjectOutputStream out;
 
     public static void main(String[] args) {
         Logger.setLogFile(GameConfig.LOG_FILE_ADMIN);
@@ -83,16 +83,17 @@ public class AdminClient {
         return new GameStateSnapshot(GameConfig.ANCHO_TABLERO, GameConfig.ALTO_TABLERO,
                 java.util.Collections.emptyList(),
                 java.util.Collections.emptyList(),
-                false,
                 com.tuempresa.proyecto.demo1.model.GamePhase.WAITING_FOR_PLAYERS);
     }
 
     private void connectAndListen() {
         try {
             socket = new Socket(GameConfig.DEFAULT_HOST, GameConfig.DEFAULT_PORT + 1);
-            // We need a PrintWriter to send commands, and an ObjectInputStream to receive objects
-            out = new PrintWriter(socket.getOutputStream(), true);
+            // To avoid deadlock, the client should initialize streams in the reverse order of the server.
+            // Server does: out -> in. Client must do: in -> out.
             in = new ObjectInputStream(socket.getInputStream());
+            out = new ObjectOutputStream(socket.getOutputStream());
+            out.flush(); // Flush the stream header immediately.
         } catch (IOException e) {
             Logger.error("Admin client connection failed", e);
             JOptionPane.showMessageDialog(frame, "Could not connect to the admin port: " + e.getMessage(), "Connection Error", JOptionPane.ERROR_MESSAGE);
@@ -140,8 +141,19 @@ public class AdminClient {
     }
 
     private void sendCommand(String command) {
+        if (out == null) {
+            Logger.error("Cannot send command, output stream is not initialized.");
+            return;
+        }
         Logger.info("Sending command to server: " + command);
-        out.println(command);
+        try {
+            out.writeObject(command);
+            out.flush();
+        } catch (IOException e) {
+            Logger.error("Failed to send command '" + command + "'", e);
+            JOptionPane.showMessageDialog(frame, "Error sending command: " + e.getMessage(), "Communication Error", JOptionPane.ERROR_MESSAGE);
+            // Consider closing the connection here if the error is fatal
+        }
     }
 
     private void updateDashboard(AdminDataSnapshot data) {
