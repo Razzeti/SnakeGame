@@ -38,6 +38,7 @@ public class GameServer {
     private Thread playerListenerThread;
     private Thread adminListenerThread;
     private final Set<AdminClientHandler> adminClientHandlers = Collections.synchronizedSet(new HashSet<>());
+    private java.util.concurrent.atomic.AtomicInteger playerCounter = new java.util.concurrent.atomic.AtomicInteger(0);
 
 
     private ConcurrentHashMap<String, com.tuempresa.proyecto.demo1.net.model.ClientMetrics> clientMetrics = new ConcurrentHashMap<>();
@@ -238,11 +239,11 @@ public class GameServer {
 
                 // Se debe crear el jugador y asignarle un ID ANTES de que pueda recibir updates del juego.
                 synchronized (gameState) {
-                    int playerIndex = gameState.getSerpientes().size();
-                    playerId = "Jugador_" + (playerIndex + 1);
+                    int playerIndex = playerCounter.incrementAndGet();
+                    playerId = "Jugador_" + playerIndex;
 
                     // Asignar una posición de la lista, rotando si hay más jugadores que posiciones.
-                    Coordenada posInicial = STARTING_POSITIONS.get(playerIndex % STARTING_POSITIONS.size());
+                    Coordenada posInicial = STARTING_POSITIONS.get((playerIndex - 1) % STARTING_POSITIONS.size());
 
                     Snake newSnake = new Snake(playerId, posInicial);
                     gameState.getSerpientes().add(newSnake);
