@@ -96,7 +96,7 @@ public class GameLogic {
         }
 
         long endTime = System.nanoTime();
-        Logger.debug(String.format("Lógica de juego tomó %.3f ms", (endTime - startTime) / 1_000_000.0));
+        // Logger.debug(String.format("Lógica de juego tomó %.3f ms", (endTime - startTime) / 1_000_000.0));
 
         // 3. Gestionar aparición de frutas
         gestionarAparicionDeFrutas(estado);
