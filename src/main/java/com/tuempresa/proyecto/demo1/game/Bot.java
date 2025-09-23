@@ -108,6 +108,10 @@ public class Bot {
     }
 
     private void decideNextMove(GameStateSnapshot snapshot) {
+        if (snapshot.gamePhase != com.tuempresa.proyecto.demo1.model.GamePhase.IN_PROGRESS) {
+            return; // No hacer nada si el juego no está en curso
+        }
+
         SnakeSnapshot mySnake = snapshot.snakes.stream()
             .filter(s -> s.idJugador.equals(botId))
             .findFirst()

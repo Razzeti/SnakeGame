@@ -13,7 +13,7 @@ public final class GameConfig {
 
     // Network configuration
     public static final String DEFAULT_HOST = "localhost";
-    public static final int DEFAULT_PORT = 12345;
+    public static final int DEFAULT_PORT = 12350;
     public static final int NETWORK_INPUT_BUFFER_SIZE = 1; // Un solo comando de dirección a la vez
     public static final int NETWORK_GAME_STATE_BUFFER_SIZE = 2; // Doble buffer para el estado del juego
 
