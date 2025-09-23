@@ -19,14 +19,6 @@ import java.awt.Paint;
 
 public class GamePanel extends JPanel {
 
-    // --- Optimizaciones de Renderizado ---
-    // Cachear objetos de UI para evitar crearlos en cada fotograma en paintComponent()
-    private static final Paint SNAKE_BODY_PAINT = new java.awt.GradientPaint(
-            0, 0, Color.GREEN,
-            GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, Color.GREEN.darker()
-    );
-    private static final Color SNAKE_HEAD_COLOR = Color.ORANGE;
-    // --- Fin de Optimizaciones ---
 
     // Se eliminan las constantes locales, ahora se usa GameConfig
     private GameState estado; // kept for compatibility but not used for rendering
@@ -73,14 +65,20 @@ public class GamePanel extends JPanel {
 
             // Draw snakes
             for (SnakeSnapshot serpiente : snapshot.snakes) {
+                Color snakeColor = new Color(serpiente.colorRgb);
+
                 // body
-                g2d.setPaint(SNAKE_BODY_PAINT);
+                Paint bodyPaint = new java.awt.GradientPaint(
+                        0, 0, snakeColor,
+                        GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, snakeColor.darker()
+                );
+                g2d.setPaint(bodyPaint);
                 for (int i = 1; i < serpiente.cuerpo.size(); i++) {
                     Coordenada parteCuerpo = serpiente.cuerpo.get(i);
                     g2d.fillRoundRect(parteCuerpo.x * GameConfig.DEFAULT_TILE_SIZE, parteCuerpo.y * GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, 10, 10);
                 }
                 // head
-                g2d.setColor(SNAKE_HEAD_COLOR);
+                g2d.setColor(snakeColor.brighter());
                 Coordenada cabeza = serpiente.cuerpo.get(0);
                 g2d.fillRoundRect(cabeza.x * GameConfig.DEFAULT_TILE_SIZE, cabeza.y * GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, 20, 20);
             }

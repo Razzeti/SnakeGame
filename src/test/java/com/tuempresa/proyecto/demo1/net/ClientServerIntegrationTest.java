@@ -50,9 +50,10 @@ class ClientServerIntegrationTest {
         GameClient client = new GameClient(true); // true para modo test sin GUI
 
         // El start se ejecuta en otro hilo para no bloquear el test
+        final String expectedPlayerName = "TestPlayer1";
         CompletableFuture<Void> clientStartFuture = CompletableFuture.runAsync(() -> {
             try {
-                client.start();
+                client.start("localhost", 12345, expectedPlayerName);
             } catch (IOException e) {
                 fail("El cliente no pudo iniciar: " + e.getMessage());
             }
@@ -62,7 +63,7 @@ class ClientServerIntegrationTest {
         String playerId = client.getPlayerIdFuture().get();
 
         assertNotNull(playerId, "El ID de jugador no debería ser nulo.");
-        assertTrue(playerId.startsWith("Jugador_"), "El ID de jugador debe tener el formato esperado.");
+        assertEquals(expectedPlayerName, playerId, "El ID de jugador debe ser el nombre enviado por el cliente.");
 
         // Detener el cliente para terminar el test limpiamente
         clientStartFuture.cancel(true);
@@ -75,11 +76,14 @@ class ClientServerIntegrationTest {
         GameClient client1 = new GameClient(true);
         GameClient client2 = new GameClient(true);
 
+        final String player1Name = "PlayerOne";
+        final String player2Name = "PlayerTwo";
+
         CompletableFuture<Void> client1Start = CompletableFuture.runAsync(() -> {
-            try { client1.start(); } catch (IOException e) { fail("Cliente 1 falló"); }
+            try { client1.start("localhost", 12345, player1Name); } catch (IOException e) { fail("Cliente 1 falló"); }
         });
         CompletableFuture<Void> client2Start = CompletableFuture.runAsync(() -> {
-            try { client2.start(); } catch (IOException e) { fail("Cliente 2 falló"); }
+            try { client2.start("localhost", 12345, player2Name); } catch (IOException e) { fail("Cliente 2 falló"); }
         });
 
         // Esperar a que ambos clientes obtengan su ID

@@ -12,6 +12,7 @@ import com.tuempresa.proyecto.demo1.util.Logger;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.awt.Color;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -49,6 +50,13 @@ public class GameServer {
             new Coordenada(10, 15), // Jugador 3
             new Coordenada(20, 15)  // Jugador 4
             // Se pueden añadir más posiciones si se espera soportar más jugadores.
+    );
+
+    private static final List<Color> PLAYER_COLORS = Arrays.asList(
+            Color.CYAN,
+            Color.PINK,
+            Color.YELLOW,
+            Color.LIGHT_GRAY
     );
 
 
@@ -233,19 +241,27 @@ public class GameServer {
 
                 // Se debe crear el jugador y asignarle un ID ANTES de que pueda recibir updates del juego.
                 synchronized (gameState) {
+                    // Leer el nombre del jugador que envía el cliente
+                    try {
+                        String requestedPlayerName = (String) in.readObject();
+                        playerId = requestedPlayerName; // Usar el nombre solicitado como ID
+                    } catch (ClassNotFoundException e) {
+                        throw new IOException("El cliente no envió un nombre de jugador válido.", e);
+                    }
+
                     int playerIndex = playerCounter.incrementAndGet();
-                    playerId = "Jugador_" + playerIndex;
 
                     // Asignar una posición de la lista, rotando si hay más jugadores que posiciones.
                     Coordenada posInicial = STARTING_POSITIONS.get((playerIndex - 1) % STARTING_POSITIONS.size());
+                    Color playerColor = PLAYER_COLORS.get((playerIndex - 1) % PLAYER_COLORS.size());
 
-                    Snake newSnake = new Snake(playerId, posInicial);
+                    Snake newSnake = new Snake(playerId, posInicial, playerColor.getRGB());
                     gameState.getSerpientes().add(newSnake);
                     accionesDeJugadores.put(playerId, Direccion.DERECHA); // Dirección inicial por defecto
 
                     metrics = new com.tuempresa.proyecto.demo1.net.model.ClientMetrics(playerId, clientSocket.getInetAddress());
                     clientMetrics.put(playerId, metrics);
-                    Logger.info("Jugador " + playerId + " se ha unido al juego en " + posInicial);
+                    Logger.info("Jugador " + playerId + " se ha unido al juego en " + posInicial + " con color " + playerColor);
                 }
 
                 // Enviar el ID al cliente. Esto lo "desbloquea" para empezar a jugar.

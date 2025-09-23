@@ -236,15 +236,20 @@ public class GameLogic {
 
         Coordenada nuevaPosicion = celdasVacias.get(random.nextInt(celdasVacias.size()));
         int tipoFruta = random.nextInt(100);
-        Fruta nuevaFruta;
+        int valor;
+        int colorRgb;
 
         if (tipoFruta < GameConfig.PROBABILIDAD_FRUTA_NORMAL) {
-            nuevaFruta = new Fruta(nuevaPosicion, 1, Color.RED.getRGB());
+            valor = 1;
+            colorRgb = new Color(255, 60, 60).getRGB(); // Rojo brillante
         } else if (tipoFruta < GameConfig.PROBABILIDAD_FRUTA_NORMAL + GameConfig.PROBABILIDAD_FRUTA_BUENA) {
-            nuevaFruta = new Fruta(nuevaPosicion, 2, Color.BLUE.getRGB());
+            valor = 2;
+            colorRgb = new Color(100, 200, 255).getRGB(); // Azul cielo
         } else {
-            nuevaFruta = new Fruta(nuevaPosicion, 3, Color.MAGENTA.getRGB());
+            valor = 3;
+            colorRgb = new Color(255, 215, 0).getRGB(); // Oro
         }
+        Fruta nuevaFruta = new Fruta(nuevaPosicion, valor, colorRgb);
 
         estado.getFrutas().add(nuevaFruta);
         Logger.debug(String.format("Nueva fruta generada en (%d, %d) con valor %d.", nuevaPosicion.x, nuevaPosicion.y, nuevaFruta.getValor()));

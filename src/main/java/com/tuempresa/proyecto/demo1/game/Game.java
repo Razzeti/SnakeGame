@@ -9,7 +9,8 @@ import com.tuempresa.proyecto.demo1.net.dto.GameStateSnapshot;
 import com.tuempresa.proyecto.demo1.ui.GraphicalView;
 import com.tuempresa.proyecto.demo1.util.Logger;
 
-import javax.swing.SwingUtilities;
+import javax.swing.*;
+import java.awt.*;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -19,23 +20,78 @@ import java.util.concurrent.atomic.AtomicReference;
 public class Game {
 
     public static void main(String[] args) {
-        if (args.length > 0) {
-            if (args[0].equalsIgnoreCase("server")) {
-                Logger.setLogFile(GameConfig.LOG_FILE_SERVER);
-                Logger.info("Iniciando en modo servidor...");
-                new GameServer().start();
-            } else if (args[0].equalsIgnoreCase("client")) {
-                Logger.setLogFile(GameConfig.LOG_FILE_CLIENT);
-                Logger.info("Iniciando en modo cliente...");
-                try {
-                    new GameClient().start();
-                } catch (IOException e) {
-                    Logger.error("No se pudo conectar al servidor: " + e.getMessage(), e);
-                }
-            }
-        } else {
+        SwingUtilities.invokeLater(Game::createAndShowMainMenu);
+    }
+
+    private static void createAndShowMainMenu() {
+        JFrame frame = new JFrame("Snake Game - Main Menu");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(300, 200);
+        frame.setLocationRelativeTo(null);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridLayout(3, 1, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JButton singlePlayerButton = new JButton("Single Player");
+        singlePlayerButton.addActionListener(e -> {
+            frame.dispose();
             Logger.info("Iniciando en modo un jugador...");
             startSinglePlayerGame();
+        });
+
+        JButton hostGameButton = new JButton("Host Game");
+        hostGameButton.addActionListener(e -> {
+            frame.dispose();
+            Logger.setLogFile(GameConfig.LOG_FILE_SERVER);
+            Logger.info("Iniciando en modo servidor...");
+            new GameServer().start();
+        });
+
+        JButton joinGameButton = new JButton("Join Game");
+        joinGameButton.addActionListener(e -> {
+            frame.dispose();
+            showJoinGameDialog();
+        });
+
+        panel.add(singlePlayerButton);
+        panel.add(hostGameButton);
+        panel.add(joinGameButton);
+
+        frame.add(panel);
+        frame.setVisible(true);
+    }
+
+    private static void showJoinGameDialog() {
+        JTextField hostField = new JTextField(GameConfig.DEFAULT_HOST);
+        JTextField portField = new JTextField(String.valueOf(GameConfig.DEFAULT_PORT));
+        JTextField nameField = new JTextField("Player" + (int)(Math.random() * 1000));
+
+        JPanel panel = new JPanel(new GridLayout(0, 1));
+        panel.add(new JLabel("Server IP:"));
+        panel.add(hostField);
+        panel.add(new JLabel("Port:"));
+        panel.add(portField);
+        panel.add(new JLabel("Player Name:"));
+        panel.add(nameField);
+
+        int result = JOptionPane.showConfirmDialog(null, panel, "Join Game",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String host = hostField.getText();
+            int port = Integer.parseInt(portField.getText());
+            String playerName = nameField.getText();
+
+            Logger.setLogFile(GameConfig.LOG_FILE_CLIENT);
+            Logger.info("Iniciando en modo cliente...");
+            try {
+                GameClient client = new GameClient();
+                client.start(host, port, playerName);
+            } catch (IOException ex) {
+                Logger.error("No se pudo conectar al servidor: " + ex.getMessage(), ex);
+                JOptionPane.showMessageDialog(null, "Could not connect to the server.", "Connection Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
