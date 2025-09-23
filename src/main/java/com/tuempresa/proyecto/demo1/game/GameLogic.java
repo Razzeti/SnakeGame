@@ -5,6 +5,7 @@ import com.tuempresa.proyecto.demo1.model.Direccion;
 import com.tuempresa.proyecto.demo1.model.Fruta;
 import com.tuempresa.proyecto.demo1.model.GameState;
 import com.tuempresa.proyecto.demo1.model.Snake;
+import com.tuempresa.proyecto.demo1.net.model.*;
 import com.tuempresa.proyecto.demo1.util.Logger;
 
 import java.awt.Color;
