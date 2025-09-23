@@ -121,73 +121,71 @@ public class GameServer {
                 gameState.setGamePhase(GamePhase.GAME_ENDED);
             }
         }
-        broadcastGameState();
-        broadcastAdminData();
+        broadcastUpdates();
 
         if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
             long endTime = System.nanoTime();
             long durationMs = TimeUnit.NANOSECONDS.toMillis(endTime - startTime);
-            String logMessage = String.format("[METRIC] Server tick duration: %d ms", durationMs);
-            if (durationMs > GameConfig.SERVER_TICK_WARNING_THRESHOLD_MS) {
-                Logger.warn(logMessage + " - EXCEEDED THRESHOLD");
-            } else {
-                Logger.info(logMessage);
+            if (GameConfig.ENABLE_LOGIC_TIME_LOGGING) {
+                String logMessage = String.format("[METRIC] Server tick duration: %d ms", durationMs);
+                if (durationMs > GameConfig.SERVER_TICK_WARNING_THRESHOLD_MS) {
+                    Logger.warn(logMessage + " - EXCEEDED THRESHOLD");
+                } else {
+                    Logger.info(logMessage);
+                }
             }
         }
     }
 
-    private void broadcastGameState() {
-        GameStateSnapshot snapshot = gameState.toSnapshotDto();
-
-        // Broadcast to players
-        // OPTIMIZATION: Serialize the complex snapshot object into a byte array ONCE.
-        byte[] snapshotBytes;
+    private void broadcastUpdates() {
+        // 1. Prepare player data (snapshot)
+        GameStateSnapshot playerSnapshot = gameState.toSnapshotDto();
+        Packet playerPacket = null;
         try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
              java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(baos)) {
-            oos.writeObject(snapshot);
-            snapshotBytes = baos.toByteArray();
+            oos.writeObject(playerSnapshot);
+            playerPacket = new Packet(baos.toByteArray());
         } catch (IOException e) {
-            Logger.error("Error serializing game state snapshot", e);
-            return; // Cannot broadcast if serialization fails.
+            Logger.error("Error serializing game state for players", e);
+            // If we can't serialize this, we can't send to admins either.
+            return;
         }
 
-        // OPTIMIZATION: Wrap the byte array in a simple Packet object.
-        Packet packet = new Packet(snapshotBytes);
-
-        if (GameConfig.ENABLE_PERFORMANCE_METRICS) {
-            Logger.info(String.format("[METRIC] Packet size: %d bytes", snapshotBytes.length));
+        // 2. Prepare admin data (richer snapshot)
+        com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot adminSnapshot = null;
+        if (!adminClientHandlers.isEmpty()) {
+            adminSnapshot = createAdminDataSnapshot(playerSnapshot);
         }
 
-        // OPTIMIZATION: Now, send the much simpler 'Packet' object to all clients.
-        // The serialization cost of this object is trivial, and the reset() call is cheap.
+        // 3. Broadcast to players
+        final Packet finalPlayerPacket = playerPacket;
         synchronized (clientOutputStreams) {
             clientOutputStreams.removeIf(out -> {
                 try {
-                    out.writeObject(packet);
+                    out.writeObject(finalPlayerPacket);
                     out.reset();
                     return false;
                 } catch (IOException e) {
-                    Logger.warn("Error al enviar estado al cliente. Eliminando cliente.");
+                    Logger.warn("Error sending state to player, removing stream.", e);
                     return true;
                 }
             });
         }
 
-        // Broadcast to admins - Using a copy to prevent ConcurrentModificationException
-        new HashSet<>(adminClientHandlers).forEach(handler -> handler.sendGameState(snapshot));
+        // 4. Broadcast to admins
+        if (adminSnapshot != null) {
+            final com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot finalAdminSnapshot = adminSnapshot;
+            new HashSet<>(adminClientHandlers).forEach(handler -> handler.sendAdminData(finalAdminSnapshot));
+        }
     }
 
-    private com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot createAdminDataSnapshot() {
+    private com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot createAdminDataSnapshot(GameStateSnapshot playerSnapshot) {
         java.util.List<com.tuempresa.proyecto.demo1.net.dto.PlayerData> playerDataList = new java.util.ArrayList<>();
         long now = System.currentTimeMillis();
 
-        // We need to iterate over the snakes to get the score, but metrics are separate.
-        // It's better to build a map of scores first.
         java.util.Map<String, Integer> playerScores = new java.util.HashMap<>();
-        synchronized (gameState) {
-            for (Snake snake : gameState.getSerpientes()) {
-                playerScores.put(snake.getIdJugador(), snake.getPuntaje());
-            }
+        for (Snake snake : gameState.getSerpientes()) {
+            playerScores.put(snake.getIdJugador(), snake.getPuntaje());
         }
 
         for (com.tuempresa.proyecto.demo1.net.model.ClientMetrics metrics : clientMetrics.values()) {
@@ -195,9 +193,7 @@ public class GameServer {
             int score = playerScores.getOrDefault(metrics.getPlayerId(), 0);
             String status = metrics.getStatus();
 
-            // If the game has ended, the snake might be gone, but the player is still "connected".
-            // We can refine their status here.
-            if (gameState.getGamePhase() == GamePhase.GAME_ENDED && status.equals("Alive")) {
+            if (gameState.getGamePhase() == GamePhase.GAME_ENDED && "Alive".equals(status)) {
                 status = "Game Over";
             }
 
@@ -211,13 +207,11 @@ public class GameServer {
             ));
         }
 
-        return new com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot(playerDataList);
-    }
-
-    private void broadcastAdminData() {
-        com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot adminSnapshot = createAdminDataSnapshot();
-        // Using a copy to prevent ConcurrentModificationException
-        new HashSet<>(adminClientHandlers).forEach(handler -> handler.sendAdminData(adminSnapshot));
+        return new com.tuempresa.proyecto.demo1.net.dto.AdminDataSnapshot(
+                playerDataList,
+                gameState.getGamePhase(),
+                playerSnapshot // Reuse the snapshot created for players
+        );
     }
 
     private class ClientHandler implements Runnable {
@@ -404,8 +398,8 @@ public class GameServer {
 
                 ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
 
-                sendGameState(gameState.toSnapshotDto());
-                sendAdminData(createAdminDataSnapshot());
+                // The first broadcast from the main loop will send all necessary data.
+                // No need to send an initial state here.
 
                 while (!Thread.currentThread().isInterrupted() && !clientSocket.isClosed()) {
                     Object commandObject = in.readObject();
@@ -426,17 +420,6 @@ public class GameServer {
                 } catch (IOException e) {
                     // Ignore
                 }
-            }
-        }
-
-        public void sendGameState(GameStateSnapshot snapshot) {
-            if (out == null) return;
-            try {
-                out.writeObject(snapshot);
-                out.reset();
-            } catch (IOException e) {
-                Logger.warn("Failed to send game state to admin, removing handler and closing socket.", e);
-                closeConnection();
             }
         }
 

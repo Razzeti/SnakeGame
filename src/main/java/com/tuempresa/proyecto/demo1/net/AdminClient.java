@@ -48,9 +48,8 @@ public class AdminClient {
         frame.setLayout(new BorderLayout());
 
         // Game Spectator View (Center)
-        // We need an initial snapshot to create the panel
-        GameStateSnapshot initialSnapshot = createEmptySnapshot();
-        gamePanel = new GamePanel(initialSnapshot);
+        // The panel is now initialized with a null state and updated when the first snapshot arrives.
+        gamePanel = new GamePanel(null);
         frame.add(gamePanel, BorderLayout.CENTER);
 
         // Player Dashboard (East)
@@ -80,28 +79,19 @@ public class AdminClient {
         connectAndListen();
     }
 
-    private GameStateSnapshot createEmptySnapshot() {
-        return new GameStateSnapshot(GameConfig.ANCHO_TABLERO, GameConfig.ALTO_TABLERO,
-                java.util.Collections.emptyList(),
-                java.util.Collections.emptyList(),
-                com.tuempresa.proyecto.demo1.model.GamePhase.WAITING_FOR_PLAYERS);
-    }
-
     private void connectAndListen() {
         try {
             socket = new Socket(GameConfig.DEFAULT_HOST, GameConfig.DEFAULT_PORT + 1);
-            // To avoid deadlock, the client should initialize streams in the reverse order of the server.
-            // Server does: out -> in. Client must do: in -> out.
             in = new ObjectInputStream(socket.getInputStream());
             out = new ObjectOutputStream(socket.getOutputStream());
-            out.flush(); // Flush the stream header immediately.
+            out.flush();
         } catch (IOException e) {
             Logger.error("Admin client connection failed", e);
             JOptionPane.showMessageDialog(frame, "Could not connect to the admin port: " + e.getMessage(), "Connection Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        // Add action listeners
+        // Action listeners
         startGameButton.addActionListener(e -> sendCommand("START_GAME"));
         resetGameButton.addActionListener(e -> sendCommand("RESET_GAME"));
         playerDashboard.getSelectionModel().addListSelectionListener(e -> {
@@ -115,19 +105,14 @@ public class AdminClient {
             }
         });
 
-
-        // Thread to listen for continuous updates from the server
+        // Listener thread
         Thread listenerThread = new Thread(() -> {
             try {
                 while (!socket.isClosed()) {
                     Object serverObject = in.readObject();
-                    if (serverObject instanceof GameStateSnapshot) {
-                        SwingUtilities.invokeLater(() -> {
-                            gamePanel.setEstado((GameStateSnapshot) serverObject);
-                            gamePanel.repaint();
-                        });
-                    } else if (serverObject instanceof AdminDataSnapshot) {
-                        SwingUtilities.invokeLater(() -> updateDashboard((AdminDataSnapshot) serverObject));
+                    if (serverObject instanceof AdminDataSnapshot) {
+                        // All data now comes in a single, optimized snapshot.
+                        SwingUtilities.invokeLater(() -> updateAdminData((AdminDataSnapshot) serverObject));
                     }
                 }
             } catch (IOException | ClassNotFoundException e) {
@@ -153,11 +138,15 @@ public class AdminClient {
         } catch (IOException e) {
             Logger.error("Failed to send command '" + command + "'", e);
             JOptionPane.showMessageDialog(frame, "Error sending command: " + e.getMessage(), "Communication Error", JOptionPane.ERROR_MESSAGE);
-            // Consider closing the connection here if the error is fatal
         }
     }
 
-    private void updateDashboard(AdminDataSnapshot data) {
+    private void updateAdminData(AdminDataSnapshot data) {
+        // 1. Update Game Spectator View
+        gamePanel.setEstado(data.getGameStateSnapshot());
+        gamePanel.repaint();
+
+        // 2. Update Player Dashboard
         dashboardModel.setRowCount(0); // Clear existing data
         for (com.tuempresa.proyecto.demo1.net.dto.PlayerData player : data.getPlayers()) {
             dashboardModel.addRow(new Object[]{
@@ -169,5 +158,10 @@ public class AdminClient {
                     player.getConnectionDurationSeconds()
             });
         }
+
+        // 3. Update UI elements based on game phase
+        boolean isGameInProgress = data.getGamePhase() == com.tuempresa.proyecto.demo1.model.GamePhase.IN_PROGRESS;
+        startGameButton.setEnabled(!isGameInProgress);
+        resetGameButton.setEnabled(isGameInProgress);
     }
 }
