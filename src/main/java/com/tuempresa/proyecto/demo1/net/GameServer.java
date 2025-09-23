@@ -241,12 +241,11 @@ public class GameServer {
 
                 // Se debe crear el jugador y asignarle un ID ANTES de que pueda recibir updates del juego.
                 synchronized (gameState) {
-                    // Leer el nombre del jugador que envía el cliente
+                    // Leer el ID que envía el cliente
                     try {
-                        String requestedPlayerName = (String) in.readObject();
-                        playerId = requestedPlayerName; // Usar el nombre solicitado como ID
+                        playerId = (String) in.readObject(); // El cliente ahora envía su propio ID
                     } catch (ClassNotFoundException e) {
-                        throw new IOException("El cliente no envió un nombre de jugador válido.", e);
+                        throw new IOException("El cliente no envió un ID válido.", e);
                     }
 
                     int playerIndex = playerCounter.incrementAndGet();
@@ -264,9 +263,7 @@ public class GameServer {
                     Logger.info("Jugador " + playerId + " se ha unido al juego en " + posInicial + " con color " + playerColor);
                 }
 
-                // Enviar el ID al cliente. Esto lo "desbloquea" para empezar a jugar.
-                out.writeObject(playerId);
-                out.flush();
+                // El cliente ya tiene su ID, no es necesario enviarlo de vuelta.
 
                 // Ahora que el cliente está listo, añadirlo a la lista de broadcast.
                 clientOutputStreams.add(out);

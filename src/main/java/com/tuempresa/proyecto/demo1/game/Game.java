@@ -54,9 +54,23 @@ public class Game {
             showJoinGameDialog();
         });
 
+        JButton addBotButton = new JButton("Add Bot");
+        addBotButton.addActionListener(e -> {
+            Logger.info("Añadiendo un bot al juego...");
+            new Thread(() -> {
+                try {
+                    Bot bot = new Bot();
+                    bot.start();
+                } catch (Exception ex) {
+                    Logger.error("Falló al iniciar el bot: " + ex.getMessage(), ex);
+                }
+            }).start();
+        });
+
         panel.add(singlePlayerButton);
         panel.add(hostGameButton);
         panel.add(joinGameButton);
+        panel.add(addBotButton);
 
         frame.add(panel);
         frame.setVisible(true);
@@ -82,12 +96,14 @@ public class Game {
             String host = hostField.getText();
             int port = Integer.parseInt(portField.getText());
             String playerName = nameField.getText();
+            String playerId = playerName + "-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+
 
             Logger.setLogFile(GameConfig.LOG_FILE_CLIENT);
-            Logger.info("Iniciando en modo cliente...");
+            Logger.info("Iniciando en modo cliente con ID: " + playerId);
             try {
                 GameClient client = new GameClient();
-                client.start(host, port, playerName);
+                client.start(host, port, playerId); // Ahora se envía el ID
             } catch (IOException ex) {
                 Logger.error("No se pudo conectar al servidor: " + ex.getMessage(), ex);
                 JOptionPane.showMessageDialog(null, "Could not connect to the server.", "Connection Error", JOptionPane.ERROR_MESSAGE);

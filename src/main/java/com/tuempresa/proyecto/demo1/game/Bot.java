@@ -48,13 +48,19 @@ public class Bot {
     public void start() throws IOException, ClassNotFoundException {
         int pick = random.nextInt(BotDifficulty.values().length);
         this.difficulty = BotDifficulty.values()[pick];
+        this.botId = "Bot-" + difficulty.name().substring(0, 3) + "-" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
-        Logger.info("Bot conectando a " + GameConfig.DEFAULT_HOST + ":" + GameConfig.DEFAULT_PORT);
+
+        Logger.info("Bot " + botId + " conectando a " + GameConfig.DEFAULT_HOST + ":" + GameConfig.DEFAULT_PORT);
         socket = new Socket(GameConfig.DEFAULT_HOST, GameConfig.DEFAULT_PORT);
         out = new ObjectOutputStream(socket.getOutputStream());
         in = new ObjectInputStream(socket.getInputStream());
 
-        botId = (String) in.readObject();
+        // Enviar nuestro ID autogenerado al servidor
+        out.writeObject(botId);
+        out.flush();
+
+        // Ya no esperamos que el servidor nos devuelva un ID.
         Logger.info("Bot conectado. ID: " + botId + " con dificultad " + this.difficulty);
 
         // Hilo para enviar la dirección al servidor
