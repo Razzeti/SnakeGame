@@ -100,7 +100,7 @@ public class PerformanceMetricsTest {
 
         // --- Simulate Rendering ---
         // We need a graphics context to call paintComponent, a BufferedImage works well
-        GameStateSnapshot emptySnapshot = new GameStateSnapshot(1,1, Collections.emptyList(), Collections.emptyList(), true, GamePhase.IN_PROGRESS);
+        GameStateSnapshot emptySnapshot = new GameStateSnapshot(1,1, Collections.emptyList(), Collections.emptyList(), GamePhase.IN_PROGRESS);
         GamePanel gamePanel = new GamePanel(emptySnapshot);
         // Simulate the panel having a size, otherwise getWidth/getHeight is 0
         gamePanel.setSize(new java.awt.Dimension(100, 100));

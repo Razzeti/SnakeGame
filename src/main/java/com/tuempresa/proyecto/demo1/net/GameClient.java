@@ -160,7 +160,6 @@ public class GameClient {
         return new GameStateSnapshot(GameConfig.ANCHO_TABLERO, GameConfig.ALTO_TABLERO,
                 java.util.Collections.emptyList(),
                 java.util.Collections.emptyList(),
-                true,
                 GamePhase.WAITING_FOR_PLAYERS); // <-- VALOR INICIAL
     }
 

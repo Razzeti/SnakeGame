@@ -21,9 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GameLogic {
 
     public void actualizar(GameState estado, ConcurrentHashMap<String, Direccion> accionesDeJugadores) {
-        if (!estado.isJuegoActivo()) {
-            return;
-        }
+        // La comprobación de si el juego está activo se hace ahora en el bucle principal (servidor o local).
 
         // Tomar una instantánea de las acciones para este tick para evitar race conditions.
         Map<String, Direccion> accionesDeEsteTick = new HashMap<>(accionesDeJugadores);

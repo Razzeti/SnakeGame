@@ -1,8 +1,6 @@
 package com.tuempresa.proyecto.demo1.net.model;
 
-import java.io.Serializable;
 import java.net.InetAddress;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Holds all server-side tracked metrics for a single connected client.
