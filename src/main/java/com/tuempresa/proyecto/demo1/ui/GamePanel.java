@@ -15,8 +15,18 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Paint;
 
 public class GamePanel extends JPanel {
+
+    // --- Optimizaciones de Renderizado ---
+    // Cachear objetos de UI para evitar crearlos en cada fotograma en paintComponent()
+    private static final Paint SNAKE_BODY_PAINT = new java.awt.GradientPaint(
+            0, 0, Color.GREEN,
+            GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, Color.GREEN.darker()
+    );
+    private static final Color SNAKE_HEAD_COLOR = Color.ORANGE;
+    // --- Fin de Optimizaciones ---
 
     // Se eliminan las constantes locales, ahora se usa GameConfig
     private GameState estado; // kept for compatibility but not used for rendering
@@ -55,7 +65,8 @@ public class GamePanel extends JPanel {
         if (snapshot != null) {
             // Draw fruits
             for (FrutaSnapshot fruta : snapshot.frutas) {
-                g2d.setColor(GameConfig.COLOR_FRUTA);
+                // Usa el color individual de cada fruta del snapshot
+                g2d.setColor(new java.awt.Color(fruta.colorRgb));
                 Coordenada pos = fruta.coordenada;
                 g2d.fillOval(pos.x * GameConfig.DEFAULT_TILE_SIZE, pos.y * GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE);
             }
@@ -63,13 +74,13 @@ public class GamePanel extends JPanel {
             // Draw snakes
             for (SnakeSnapshot serpiente : snapshot.snakes) {
                 // body
-                g2d.setPaint(new java.awt.GradientPaint(0, 0, Color.GREEN, GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, Color.GREEN.darker()));
+                g2d.setPaint(SNAKE_BODY_PAINT);
                 for (int i = 1; i < serpiente.cuerpo.size(); i++) {
                     Coordenada parteCuerpo = serpiente.cuerpo.get(i);
                     g2d.fillRoundRect(parteCuerpo.x * GameConfig.DEFAULT_TILE_SIZE, parteCuerpo.y * GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, 10, 10);
                 }
                 // head
-                g2d.setColor(Color.ORANGE);
+                g2d.setColor(SNAKE_HEAD_COLOR);
                 Coordenada cabeza = serpiente.cuerpo.get(0);
                 g2d.fillRoundRect(cabeza.x * GameConfig.DEFAULT_TILE_SIZE, cabeza.y * GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, GameConfig.DEFAULT_TILE_SIZE, 20, 20);
             }

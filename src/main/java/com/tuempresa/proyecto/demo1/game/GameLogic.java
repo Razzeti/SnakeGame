@@ -157,8 +157,14 @@ public class GameLogic {
             return CausaMuerte.COLISION_PARED;
         }
 
-        for (int i = 0; i < serpiente.getCuerpo().size(); i++) {
-            if (nuevaCabeza.equals(serpiente.getCuerpo().get(i))) {
+        // Optimización: Usar el método ocupa() para una comprobación O(1) en lugar de un bucle O(L).
+        if (serpiente.ocupa(nuevaCabeza)) {
+            // Excepción: si la nueva cabeza está en la posición de la cola actual Y la serpiente no va a crecer,
+            // no es una colisión, porque la cola se moverá.
+            Coordenada cola = serpiente.getCuerpo().getLast();
+            if (nuevaCabeza.equals(cola) && serpiente.getSegmentosPorCrecer() == 0 && serpiente.getCuerpo().size() > 1) {
+                // No es una colisión, es un movimiento válido para "perseguir la cola".
+            } else {
                 return CausaMuerte.COLISION_CUERPO;
             }
         }
