@@ -24,8 +24,8 @@ public class GamePanel extends JPanel {
 
     public GamePanel(GameStateSnapshot inicial) {
         this.snapshot = inicial;
-        int panelWidth = inicial.width * GameConfig.DEFAULT_TILE_SIZE;
-        int panelHeight = inicial.height * GameConfig.DEFAULT_TILE_SIZE;
+        int panelWidth = (inicial != null ? inicial.width : GameConfig.ANCHO_TABLERO) * GameConfig.DEFAULT_TILE_SIZE;
+        int panelHeight = (inicial != null ? inicial.height : GameConfig.ALTO_TABLERO) * GameConfig.DEFAULT_TILE_SIZE;
         this.setPreferredSize(new Dimension(panelWidth, panelHeight));
         this.setBackground(GameConfig.COLOR_FONDO);
     }
