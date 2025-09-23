@@ -12,8 +12,9 @@ public class Snake implements java.io.Serializable {
     private int puntaje;
     private String idJugador;
     private int segmentosPorCrecer; // <-- NUEVA VARIABLE
+    private int colorRgb;
 
-    public Snake(String idJugador, Coordenada posicionInicial) {
+    public Snake(String idJugador, Coordenada posicionInicial, int colorRgb) {
         this.idJugador = idJugador;
         this.puntaje = 0;
         this.cuerpo = new LinkedList<>();
@@ -21,6 +22,11 @@ public class Snake implements java.io.Serializable {
         this.ocupadas = new java.util.HashSet<>();
         this.ocupadas.add(key(posicionInicial));
         this.segmentosPorCrecer = 0;
+        this.colorRgb = colorRgb;
+    }
+
+    public Snake(String idJugador, Coordenada posicionInicial) {
+        this(idJugador, posicionInicial, java.awt.Color.GREEN.getRGB());
     }
 
     // Copy constructor for deep copy / snapshots
@@ -28,6 +34,7 @@ public class Snake implements java.io.Serializable {
         this.idJugador = other.idJugador;
         this.puntaje = other.puntaje;
         this.segmentosPorCrecer = other.segmentosPorCrecer;
+        this.colorRgb = other.colorRgb;
         this.cuerpo = new LinkedList<>();
         this.ocupadas = new java.util.HashSet<>();
         for (Coordenada c : other.cuerpo) {
@@ -57,6 +64,7 @@ public class Snake implements java.io.Serializable {
     public String getIdJugador() { return idJugador; }
     public Coordenada getHead() { return this.cuerpo.getFirst(); }
     public int getSegmentosPorCrecer() { return segmentosPorCrecer; } // <-- NUEVO GETTER
+    public int getColorRgb() { return colorRgb; }
 
     // SETTERS
     public void setCuerpo(LinkedList<Coordenada> cuerpo) { this.cuerpo = cuerpo; }

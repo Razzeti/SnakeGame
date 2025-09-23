@@ -44,13 +44,23 @@ public class GameClient {
     }
 
     public void start() throws IOException {
+        start(GameConfig.DEFAULT_HOST, GameConfig.DEFAULT_PORT, "Player" + (int)(Math.random() * 1000));
+    }
+
+    public void start(String host, int port, String playerName) throws IOException {
         Logger.info("Iniciando cliente...");
         try {
-            socket = new Socket(GameConfig.DEFAULT_HOST, GameConfig.DEFAULT_PORT);
+            socket = new Socket(host, port);
             socket.setTcpNoDelay(true); // OPTIMIZATION: Disable Nagle's Algorithm to reduce latency
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
 
+            // Enviar el nombre del jugador al servidor
+            out.writeObject(playerName);
+            out.flush();
+
+            // El servidor ahora podría devolver un ID de jugador único, o podríamos usar el nombre.
+            // Por ahora, asumimos que el servidor nos devuelve nuestro ID.
             playerId = (String) in.readObject();
             Logger.info("Conectado como: " + playerId);
             playerIdFuture.complete(playerId);

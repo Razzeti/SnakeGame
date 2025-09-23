@@ -12,11 +12,13 @@ public class SnakeSnapshot implements Serializable {
     public final int puntaje;
     public final List<Coordenada> cuerpo;
     public final int segmentosPorCrecer;
+    public final int colorRgb;
 
-    public SnakeSnapshot(String idJugador, int puntaje, List<Coordenada> cuerpo, int segmentosPorCrecer) {
+    public SnakeSnapshot(String idJugador, int puntaje, List<Coordenada> cuerpo, int segmentosPorCrecer, int colorRgb) {
         this.idJugador = idJugador;
         this.puntaje = puntaje;
         this.cuerpo = Collections.unmodifiableList(cuerpo);
         this.segmentosPorCrecer = segmentosPorCrecer;
+        this.colorRgb = colorRgb;
     }
 }
