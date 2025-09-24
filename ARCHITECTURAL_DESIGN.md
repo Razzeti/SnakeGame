@@ -1,48 +1,69 @@
 # Architectural Design Document
 
-This document outlines the proposed architectural changes to the Java Snake game. The goal is to refactor the existing prototype into a robust, performant, and production-ready application that can serve as a foundation for a scalable, client-server multiplayer game.
+This document outlines the current architectural design of the Java Snake game. The architecture is designed to be robust, performant, and maintainable, supporting a client-server multiplayer experience.
 
-## Part 1: Code Brittleness and Maintainability
+## 1. Core Architecture: Client-Server Model
 
-### Analysis
-The current codebase suffers from two main issues:
-1.  **Hardcoded "Magic Numbers":** Values like the board dimensions (20, 10) are hardcoded directly in the source code, making it difficult to configure and maintain the game.
-2.  **Incorrect Data Structures:** The `Coordenada` class, which is a fundamental data structure, is not implemented correctly for use in high-performance collections. It lacks proper `equals()` and `hashCode()` implementations, which can lead to incorrect behavior in collections like `HashSet` and `HashMap`.
+The game is built on a classic client-server model to support multiplayer gameplay.
 
-### Proposed Solution
-1.  **Centralized Configuration:** I will create a `Constants` class to centralize all configuration values. This will allow for easy modification of game parameters such as board dimensions, snake speed, and other game-related constants.
-2.  **Proper `Coordenada` Implementation:** I will override the `equals()` and `hashCode()` methods in the `Coordenada` class. This will ensure that instances of `Coordenada` can be correctly used in hash-based collections, which is crucial for efficient collision detection and other game logic.
+*   **`GameServer`**: The authoritative central server that manages the game state, player connections, and the main game loop. It is responsible for all game logic execution.
+*   **`GameClient`**: A lightweight client that connects to the server. Its primary responsibilities are to send user input (direction changes) to the server and to render the game state it receives from the server.
+*   **Network Protocol**: Communication is handled over TCP sockets. The server listens for client connections on a configurable port (default `12345`) and for administrator connections on a separate port (default `12346`).
 
-## Part 2: Server Observability and Performance Blind Spots
+## 2. State Management and Concurrency
 
-### Analysis
-The server currently runs "dark," with no visibility into its internal state, critical events, or performance bottlenecks. This makes it impossible to debug issues post-factum or analyze the game's performance under load.
+To ensure stability and prevent concurrency issues between the game logic thread and the rendering thread, the application employs the **Snapshot Pattern**.
 
-### Proposed Solution
-I will implement a unified `Logger` class to provide a simple and effective observability solution. This class will:
--   Provide static methods for logging at different levels (e.g., `info`, `warn`, `error`).
--   Write log messages to both the console and a log file (`server.log` and `client.log`).
--   Be integrated into critical parts of the application to log events such as player connections/disconnections, game state changes, and game loop tick durations.
+*   **`GameState`**: A mutable class that holds the complete, authoritative state of the game, including all snakes, fruits, and the current game phase. This object is managed exclusively by the server's main game loop.
+*   **`GameStateSnapshot`**: An immutable Data Transfer Object (DTO) that represents a read-only view of the game state at a specific moment in time.
+*   **Data Flow**:
+    1.  The `GameServer` updates the `GameState` on each tick.
+    2.  After the update, the server creates an immutable `GameStateSnapshot` from the `GameState`.
+    3.  This snapshot is serialized and broadcast to all connected `GameClient` instances.
+    4.  The client's rendering thread (the Swing Event Dispatch Thread) uses this snapshot to draw the game.
 
-## Part 3: Concurrency and GUI Instability
+This pattern decouples the game logic from the rendering logic, eliminating `ConcurrentModificationException` errors and ensuring that the GUI always renders a consistent state.
 
-### Analysis
-The current threading model allows the game loop thread and the Swing Event Dispatch Thread (EDT) to access the same mutable `GameState` object. This creates a high risk of `ConcurrentModificationException` errors and graphical glitches, as the game state can be modified while it is being rendered.
+## 3. Data Transfer Objects (DTOs)
 
-### Proposed Solution
-I will implement the **Snapshot Pattern** to decouple the game logic state from the rendering state.
--   The game loop will create an immutable snapshot of the game state at the end of each tick.
--   The rendering thread will use this stable, immutable snapshot for rendering.
-This approach completely eliminates the risk of concurrency issues by ensuring that the rendering thread always operates on a consistent view of the data, without the need for complex locking mechanisms. I will create a `GameStateSnapshot` class to hold a deep copy of all the data required for rendering.
+To ensure efficient and clean network communication, the project uses lightweight DTOs to transfer data between the server and clients.
 
-## Part 4: Network Inefficiency and Architectural Coupling
+*   **`GameStateSnapshot`**: The primary DTO, which encapsulates the entire state needed for rendering. It contains lists of `SnakeDTO` and `FrutaDTO` objects.
+*   **`SnakeDTO` and `FrutaDTO`**: Lightweight, serializable representations of the game objects. They contain only the data necessary for the client to render them (e.g., coordinates, colors), without any of the server-side logic or heavyweight objects like `java.awt.Color`.
 
-### Analysis
-The current data model is not designed for network transmission. It is heavyweight and tightly couples the game logic to the view (e.g., by using `java.awt.Color`). This makes it difficult and inefficient to implement a client-server architecture.
+This approach minimizes bandwidth usage and creates a clean separation of concerns between the server's internal data model and the network-facing data contract.
 
-### Proposed Solution
-I will design and implement a set of **Data Transfer Objects (DTOs)** that are suitable for a low-latency network environment.
--   These DTOs will be lightweight, plain Java objects representing the game state in a serializable format.
--   I will create DTOs for the snake, fruit, and the overall game state (`SnakeDTO`, `FrutaDTO`, `GameStateDTO`).
--   These DTOs will contain only the data necessary for the client to render the game, removing any server-side logic or heavyweight objects.
-This will create a clean separation between the server's authoritative state and the data required by the client, which is essential for a scalable and maintainable client-server architecture.
+## 4. Centralized Configuration
+
+To enhance maintainability and simplify configuration, all "magic numbers" and tunable parameters have been centralized.
+
+*   **`GameConfig.java`**: A final class containing static constants for all major game parameters. This includes:
+    *   Board dimensions (`ANCHO_TABLERO`, `ALTO_TABLERO`)
+    *   Network ports (`DEFAULT_PORT`, `ADMIN_PORT`)
+    *   Game speed (`TICK_DELAY`)
+    *   Colors and other rendering-related values
+
+This centralization allows for easy adjustments to the game's behavior without modifying the core logic.
+
+## 5. Game Flow and State Machine
+
+The game's flow is managed by a robust state machine, implemented using the `GamePhase` enum.
+
+*   **`GamePhase` Enum**: Defines the possible states of the game:
+    *   `WAITING_FOR_PLAYERS`: The initial state when the server is waiting for clients to connect.
+    *   `IN_PROGRESS`: The state when the game is actively being played.
+    *   `GAME_ENDED`: The state after the game has finished.
+*   **State Transitions**: The `GameServer` controls the transitions between these phases based on player actions and administrator commands. For example, the game only moves from `WAITING_FOR_PLAYERS` to `IN_PROGRESS` after an administrator issues the `START_GAME` command.
+
+## 6. Administrator Interface
+
+For game management and observability, a simple text-based administrator interface is available on a separate network port.
+
+*   **Functionality**: Allows an administrator to connect via a tool like `netcat` or `telnet` to issue commands.
+*   **Commands**:
+    *   `START_GAME`: Starts the game.
+    *   `RESET_GAME`: Resets the game to the waiting phase.
+    *   `LIST_PLAYERS`: Lists connected players.
+    *   `SHUTDOWN`: Stops the server.
+
+This out-of-band management channel provides essential control over the live game environment.
