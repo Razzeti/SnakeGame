@@ -3,6 +3,7 @@ package com.tuempresa.proyecto.demo1.game;
 import com.tuempresa.proyecto.demo1.model.Direccion;
 import com.tuempresa.proyecto.demo1.model.GameState;
 import com.tuempresa.proyecto.demo1.model.Snake;
+import com.tuempresa.proyecto.demo1.net.AdminClient;
 import com.tuempresa.proyecto.demo1.net.GameClient;
 import com.tuempresa.proyecto.demo1.net.GameServer;
 import com.tuempresa.proyecto.demo1.net.dto.GameStateSnapshot;
@@ -26,11 +27,11 @@ public class Game {
     private static void createAndShowMainMenu() {
         JFrame frame = new JFrame("Snake Game - Main Menu");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(300, 200);
+        frame.setSize(300, 250);
         frame.setLocationRelativeTo(null);
 
         JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(3, 1, 10, 10));
+        panel.setLayout(new GridLayout(5, 1, 10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JButton singlePlayerButton = new JButton("Single Player");
@@ -56,24 +57,79 @@ public class Game {
 
         JButton addBotButton = new JButton("Add Bot");
         addBotButton.addActionListener(e -> {
-            Logger.info("Añadiendo un bot al juego...");
-            new Thread(() -> {
-                try {
-                    Bot bot = new Bot();
-                    bot.start();
-                } catch (Exception ex) {
-                    Logger.error("Falló al iniciar el bot: " + ex.getMessage(), ex);
-                }
-            }).start();
+            frame.dispose();
+            showBotConnectionDialog();
+        });
+
+        JButton adminClientButton = new JButton("Join as Admin");
+        adminClientButton.addActionListener(e -> {
+            frame.dispose();
+            showAdminLoginDialog();
         });
 
         panel.add(singlePlayerButton);
         panel.add(hostGameButton);
         panel.add(joinGameButton);
         panel.add(addBotButton);
+        panel.add(adminClientButton);
 
         frame.add(panel);
         frame.setVisible(true);
+    }
+
+    private static void showAdminLoginDialog() {
+        JTextField hostField = new JTextField(GameConfig.DEFAULT_HOST);
+        JTextField portField = new JTextField(String.valueOf(GameConfig.DEFAULT_PORT));
+
+        JPanel panel = new JPanel(new GridLayout(0, 1));
+        panel.add(new JLabel("Server IP:"));
+        panel.add(hostField);
+        panel.add(new JLabel("Port:"));
+        panel.add(portField);
+
+        int result = JOptionPane.showConfirmDialog(null, panel, "Admin Login",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String host = hostField.getText();
+            int port = Integer.parseInt(portField.getText());
+
+            Logger.setLogFile(GameConfig.LOG_FILE_ADMIN);
+            Logger.info("Iniciando en modo admin...");
+
+            new Thread(() -> {
+                new AdminClient().start(host, port);
+            }).start();
+        }
+    }
+
+    private static void showBotConnectionDialog() {
+        JTextField hostField = new JTextField(GameConfig.DEFAULT_HOST);
+        JTextField portField = new JTextField(String.valueOf(GameConfig.DEFAULT_PORT));
+
+        JPanel panel = new JPanel(new GridLayout(0, 1));
+        panel.add(new JLabel("Server IP:"));
+        panel.add(hostField);
+        panel.add(new JLabel("Port:"));
+        panel.add(portField);
+
+        int result = JOptionPane.showConfirmDialog(null, panel, "Add Bot",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String host = hostField.getText();
+            int port = Integer.parseInt(portField.getText());
+
+            Logger.info("Añadiendo un bot al juego...");
+            new Thread(() -> {
+                try {
+                    Bot bot = new Bot();
+                    bot.start(host, port);
+                } catch (Exception ex) {
+                    Logger.error("Falló al iniciar el bot: " + ex.getMessage(), ex);
+                }
+            }).start();
+        }
     }
 
     private static void showJoinGameDialog() {

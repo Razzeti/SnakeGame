@@ -29,19 +29,7 @@ public class AdminClient {
     private ObjectInputStream in;
     private ObjectOutputStream out;
 
-    public static void main(String[] args) {
-        Logger.setLogFile(GameConfig.LOG_FILE_ADMIN);
-        SwingUtilities.invokeLater(() -> {
-            try {
-                new AdminClient().start();
-            } catch (IOException e) {
-                Logger.error("Failed to start Admin Client", e);
-                JOptionPane.showMessageDialog(null, "Could not connect to the server: " + e.getMessage(), "Connection Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-    }
-
-    public void start() throws IOException {
+    public void start(String host, int port) {
         // Setup GUI
         frame = new JFrame("Game Admin Console");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -76,12 +64,12 @@ public class AdminClient {
         frame.setVisible(true);
 
         // Connect to server and start listening
-        connectAndListen();
+        connectAndListen(host, port);
     }
 
-    private void connectAndListen() {
+    private void connectAndListen(String host, int port) {
         try {
-            socket = new Socket(GameConfig.DEFAULT_HOST, GameConfig.DEFAULT_PORT + 1);
+            socket = new Socket(host, port + 1);
             in = new ObjectInputStream(socket.getInputStream());
             out = new ObjectOutputStream(socket.getOutputStream());
             out.flush();
