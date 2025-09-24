@@ -2,6 +2,11 @@
 
 This project is a classic Snake game implemented in Java with multiplayer support. It features a robust client-server architecture, a centralized configuration system, and an administrator interface for game management.
 
+For more detailed information on the project's design and analysis, please see the following documents:
+*   [`ARCHITECTURAL_DESIGN.md`](./ARCHITECTURAL_DESIGN.md): A detailed overview of the application's architecture.
+*   [`ANALYSIS.md`](./ANALYSIS.md): An analysis of the system's performance and a roadmap for future improvements.
+*   [`STRESS_TEST_PLAN.md`](./STRESS_TEST_PLAN.md): The plan for stress testing the server.
+
 ## Project Structure
 
 The project is a standard Maven project. Key classes include:
