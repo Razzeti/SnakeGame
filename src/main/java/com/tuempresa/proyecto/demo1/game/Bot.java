@@ -34,25 +34,14 @@ public class Bot {
     private BotDifficulty difficulty;
     private final Random random = new Random();
 
-    public static void main(String[] args) {
-        // Lógica para iniciar un bot. Se puede modificar para iniciar múltiples bots.
-        Logger.info("Iniciando un bot...");
-        Bot bot = new Bot();
-        try {
-            bot.start();
-        } catch (IOException | ClassNotFoundException e) {
-            Logger.error("El bot falló al iniciar o se desconectó: " + e.getMessage(), e);
-        }
-    }
-
-    public void start() throws IOException, ClassNotFoundException {
+    public void start(String host, int port) throws IOException, ClassNotFoundException {
         int pick = random.nextInt(BotDifficulty.values().length);
         this.difficulty = BotDifficulty.values()[pick];
         this.botId = "Bot-" + difficulty.name().substring(0, 3) + "-" + java.util.UUID.randomUUID().toString().substring(0, 8);
 
 
-        Logger.info("Bot " + botId + " conectando a " + GameConfig.DEFAULT_HOST + ":" + GameConfig.DEFAULT_PORT);
-        socket = new Socket(GameConfig.DEFAULT_HOST, GameConfig.DEFAULT_PORT);
+        Logger.info("Bot " + botId + " conectando a " + host + ":" + port);
+        socket = new Socket(host, port);
         out = new ObjectOutputStream(socket.getOutputStream());
         in = new ObjectInputStream(socket.getInputStream());
 
